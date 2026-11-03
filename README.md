@@ -2,13 +2,13 @@
 
 # 👋 Hi, I'm Farhan Angga Riyanto
 
-### Full-Stack Developer | Front-End Developer | Back-End Developer | React · Next.js · TypeScript
+### Full-Stack Developer | Front-End & Back-End Developer | UI/UX Designer
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=22&pause=1000&color=38BDF8&center=true&vCenter=true&width=700&lines=Full-Stack+Developer;Front-End+Developer;React.js+%7C+Next.js+%7C+TypeScript;Turning+Figma+Designs+into+Real+Products;Software+Engineering+Graduate+%40+UPI" alt="Typing SVG" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=22&pause=1000&color=38BDF8&center=true&vCenter=true&width=750&lines=Full-Stack+Developer;Front-End+%7C+Back-End+%7C+UI%2FUX+Design;React.js+%7C+Next.js+%7C+TypeScript+%7C+NestJS+%7C+Laravel;From+Figma+Wireframes+to+Production+Code;Software+Engineering+Graduate+%40+UPI" alt="Typing SVG" />
 
 <p>
-Front-End Developer yang suka membangun antarmuka web yang <b>responsif, rapi, dan mudah dirawat</b>.<br/>
-Menjembatani desain dan kode: dari wireframe di Figma sampai komponen React yang siap produksi.
+Full-stack developer and UI/UX designer who builds <b>responsive, accessible, and maintainable</b> web applications.<br/>
+I cover the whole product journey: designing interfaces in Figma, building them with React and Next.js, and powering them with REST APIs and databases.
 </p>
 
 <img src="https://img.shields.io/badge/Open%20to-Work-22c55e?style=for-the-badge" />
@@ -27,23 +27,34 @@ Menjembatani desain dan kode: dari wireframe di Figma sampai komponen React yang
 
 ## 🚀 About Me
 
-- 🎓 Lulusan **S1 Rekayasa Perangkat Lunak, Universitas Pendidikan Indonesia** (GPA 3.83)
-- 💻 Fokus pada **React.js, Next.js, TypeScript, dan Tailwind CSS**
-- 🎨 Terbiasa **Design-to-Code**: menerjemahkan desain Figma menjadi UI yang konsisten dan responsif
-- 🧩 Senang membangun **reusable components** dan mengintegrasikan **REST API**
-- ⚙️ Punya dasar backend: **Node.js, NestJS, Laravel, PostgreSQL, MySQL, Supabase**
-- 🤝 Pengalaman bekerja bareng tim UI/UX dan developer di proyek nyata
-- 🌐 Bahasa: Indonesia (native), English (fluent), Japanese (intermediate)
+- 🎓 Software Engineering graduate from **Universitas Pendidikan Indonesia** (GPA 3.83)
+- 💻 **Full-Stack Developer** building end-to-end web applications, from interface to database
+- 🎨 **UI/UX Designer** experienced in wireframing, prototyping, and design-to-code implementation with Figma
+- 🖥️ **Front-End:** React.js, Next.js, TypeScript, and Tailwind CSS, with a focus on reusable components
+- ⚙️ **Back-End:** Node.js, NestJS, Laravel, and PHP, building REST APIs and database-driven apps with PostgreSQL, MySQL, and Supabase
+- 🤝 Experienced in cross-functional collaboration with designers and developers on real-world projects
+- 🌐 Languages: Indonesian (native), English (fluent), Japanese (intermediate)
+
+---
+
+## 🎯 What I Do
+
+| 🖥️ Front-End | ⚙️ Back-End | 🎨 UI/UX Design |
+|:---|:---|:---|
+| Responsive web interfaces | REST API development & integration | User interface design |
+| Reusable component libraries | Database design & management | Wireframing & prototyping |
+| Design-to-code implementation | Authentication (e.g. Google login) | Design systems & consistency |
+| Data visualization dashboards | CRUD & business logic | Figma-to-code handoff |
 
 ---
 
 ## 💼 Experience
 
-| Role | Company | Periode |
-|------|---------|---------|
+| Role | Company | Period |
+|------|---------|--------|
 | Front-End Developer (Freelance) | SuCC Team | May 2026 – Present |
 | Front-End Developer (Intern) | PT Jaring Solusi Aplikasi | Sep 2025 – Dec 2025 |
-| Front-End Developer (Intern) | PT Masagi Energi Hijau | Mar 2025 – Jun 2025 |
+| UI Designer & Front-End Developer (Intern) | PT Masagi Energi Hijau | Mar 2025 – Jun 2025 |
 
 ---
 
@@ -67,12 +78,30 @@ Menjembatani desain dan kode: dari wireframe di Figma sampai komponen React yang
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
-### Tools & Design
+### UI/UX Design
+![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
+![Wireframing](https://img.shields.io/badge/Wireframing-8B5CF6?style=for-the-badge)
+![Prototyping](https://img.shields.io/badge/Prototyping-EC4899?style=for-the-badge)
+![UI Design](https://img.shields.io/badge/UI_Design-F59E0B?style=for-the-badge)
+
+### Tools & Deployment
 ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
 ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
 ![VS Code](https://img.shields.io/badge/VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)
+
+---
+
+## 📌 Featured Projects
+
+| Project | Description | Focus | Tech |
+|---------|-------------|-------|------|
+| **SlogLab** | Document tracking system supporting document management and operational workflows | Front-End | React.js, Tailwind CSS |
+| **Rampcheck Nasional** | Web-based bus inspection system that digitizes roadworthiness inspection forms and workflows | Front-End | Next.js, React.js, Tailwind CSS |
+| **Bimbim** | Digital cashier app with transaction management and financial reporting | Design + Development | — |
+| **Kerthi Bali Santhi** | Digital dashboard with interactive data visualizations for a Bali regional enterprise | Full-Stack | Laravel, Tailwind CSS, Chart.js |
+| **Casepose** | Student portfolio and social media platform with CRUD, Google login, post promotion, and transaction history | Full-Stack | PHP Native |
+| **Jaring Company Profile** | Responsive corporate website showcasing company info, products, and services | Front-End | — |
 
 ---
 
@@ -88,9 +117,9 @@ Menjembatani desain dan kode: dari wireframe di Figma sampai komponen React yang
 
 ## 🏆 Certifications & Achievements
 
-- 📜 **BNSP**: Sertifikasi Kompetensi KKNI Level II, Rekayasa Perangkat Lunak
-- 📜 **Dicoding**: Belajar Dasar AI
-- 🥇 **Juara 1** Sayembara Logo Kabinet "Daya Cita", DPM UPI Cibiru
+- 📜 **BNSP:** National Professional Certification Agency, KKNI Level II in Software Engineering
+- 📜 **Dicoding:** Belajar Dasar AI (AI Fundamentals)
+- 🥇 **1st Place,** "Daya Cita" Cabinet Logo Competition, DPM UPI Cibiru
 
 ---
 
@@ -110,6 +139,6 @@ Menjembatani desain dan kode: dari wireframe di Figma sampai komponen React yang
 
 <br/><br/>
 
-✨ *"Turning ideas into digital experiences."*
+✨ *"Designing, building, and shipping ideas as digital experiences."*
 
 </div>
