@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 👋 Hi, I'm Farhan Angga Riyanto
 
-## Getting Started
+<div align="center">
 
-First, run the development server:
+### Full-Stack Developer | Software Engineer
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=22&pause=1000&color=38BDF8&center=true&vCenter=true&width=600&lines=Full-Stack+Developer;Building+Modern+Web+Applications;Frontend+%2B+Backend+Engineer;Always+Learning+New+Technologies" alt="Typing SVG" />
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+<p>
+  Passionate about building modern, scalable, and user-friendly web applications.
+  I enjoy transforming ideas into functional digital products through clean code,
+  thoughtful UI/UX, and continuous learning.
+</p>
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+<a href="https://github.com/USERNAME">
+  <img src="https://img.shields.io/github/followers/USERNAME?label=Followers&style=social" />
+</a>
+<img src="https://komarev.com/ghpvc/?username=USERNAME&label=Profile%20Views&color=0e75b6&style=flat" />
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+</div>
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 About Me
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 💻 Full-Stack Developer focused on modern web technologies.
+- 🎨 Interested in UI/UX Design and Frontend Engineering.
+- ⚙️ Experienced in building REST APIs and database-driven applications.
+- 🌱 Continuously exploring software architecture and development practices.
+- 🎯 Passionate about creating impactful digital solutions.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tech Stack
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Frontend
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript
