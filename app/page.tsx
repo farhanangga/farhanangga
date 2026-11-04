@@ -889,7 +889,7 @@ function Footer() {
               </motion.a>
             ))}
           </div>
-          <p className="text-sm text-white/50">© {new Date().getFullYear()} Farhan Angga Riyanto</p>
+          <p className="text-sm text-white/50">© 2026 Farhan Angga Riyanto</p>
         </div>
       </div>
 
