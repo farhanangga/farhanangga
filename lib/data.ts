@@ -37,7 +37,7 @@ export const profile = {
   tagline:
     "Membangun antarmuka web yang responsif dan mudah dipakai, dari desain di Figma sampai kode yang berjalan di produksi.",
   about:
-    "Front-end developer yang berpengalaman membangun aplikasi web responsif dengan React.js, Next.js, TypeScript, dan Tailwind CSS. Saya terbiasa menerjemahkan desain Figma menjadi antarmuka yang berfungsi, membuat komponen yang bisa dipakai ulang, menghubungkan REST API, dan bekerja bersama desainer UI/UX maupun tim pengembang.",
+    "Software Engineer yang berpengalaman membangun aplikasi web responsif dengan React.js, Next.js, TypeScript, dan Tailwind CSS. Saya terbiasa menerjemahkan desain Figma menjadi antarmuka yang berfungsi, membuat komponen yang bisa dipakai ulang, menghubungkan REST API, dan bekerja bersama desainer UI/UX maupun tim pengembang.",
   graduatedFrom: "Universitas Pendidikan Indonesia",
   degree: "S1 Rekayasa Perangkat Lunak, 2022 – 2026",
   gpa: 3.83,
@@ -67,25 +67,142 @@ export const contacts = [
   { platform: "Instagram", href: "https://instagram.com", icon: "instagram" },
 ];
 
-export const bestProject = {
-  title: "Casepose",
-  subtitle: "Student Portfolio & Social Media Platform",
-  description:
-    "Platform web tempat mahasiswa memamerkan portofolio, mempromosikan proyek, dan mengelola konten. Dilengkapi CRUD, login Google, fitur promosi postingan, serta riwayat transaksi dan laporan.",
-  image: dummyProject,
-  role: "Full-Stack Developer",
-  engagement: "Individu",
-  category: "Website",
-  tools: ["PHP Native", "MySQL", "Google Login", "CRUD", "Tailwind CSS"],
+/* ───────────── Proyek (dipakai komponen BestProject) ───────────── */
+
+/** 5 gambar per proyek: /assets/project/project{n}-1.png sampai project{n}-5.png */
+const shots = (n: number) =>
+  Array.from({ length: 5 }, (_, i) => `/assets/project/project${n}-${i + 1}.png`);
+
+export type ProjectItem = {
+  id: string;
+  title: string;
+  type: string;
+  role: string;
+  tools: string[];
+  desc: string;
+  highlights: string[];
+  images: string[];
 };
 
-export const otherProjects = [
-  { title: "SlogLab", type: "Document Tracking System", desc: "Antarmuka pelacakan dokumen untuk alur kerja operasional, dibangun dari desain UI/UX.", tools: "React.js, Tailwind CSS" },
-  { title: "Rampcheck Nasional", type: "Transportation Inspection System", desc: "Antarmuka web inspeksi bus untuk penilaian kelayakan kendaraan, mendigitalkan formulir inspeksi.", tools: "Next.js, React.js, Tailwind CSS" },
-  { title: "Bimbim", type: "Digital Cashier & Financial Reporting", desc: "Aplikasi kasir digital dengan manajemen transaksi dan laporan keuangan.", tools: "Web App" },
-  { title: "Kerthi Bali Santhi", type: "Digital Dashboard", desc: "Dashboard perusahaan daerah Bali dengan visualisasi data operasional interaktif.", tools: "Laravel, Tailwind CSS, Chart.js" },
-  { title: "Jaring Company Profile", type: "Corporate Website", desc: "Website perusahaan responsif berisi profil, produk, dan layanan.", tools: "Web" },
+export type ProjectTab = {
+  id: string;
+  label: string;
+  short: string;
+  typeLabel: string;
+  toolsLabel: string;
+  projects: ProjectItem[];
+};
+
+export const projectTabs: ProjectTab[] = [
+  {
+    id: "software",
+    label: "Software Engineer",
+    short: "Software",
+    typeLabel: "Jenis aplikasi",
+    toolsLabel: "Tools",
+    projects: [
+      {
+        id: "casepose",
+        title: "Casepose",
+        type: "Student Portfolio & Social Media",
+        role: "Full-Stack Developer · Individu",
+        tools: ["PHP Native", "MySQL", "Google Login", "Tailwind CSS"],
+        desc: "Platform web tempat mahasiswa memamerkan portofolio, mempromosikan proyek, dan mengelola konten.",
+        highlights: [
+          "CRUD konten portofolio dan postingan",
+          "Login dengan akun Google",
+          "Fitur promosi postingan",
+          "Riwayat transaksi dan laporan",
+        ],
+        images: shots(1),
+      },
+      {
+        id: "sloglab",
+        title: "SlogLab",
+        type: "Document Tracking System",
+        role: "Front-End Developer · Tim", // (sesuaikan)
+        tools: ["React.js", "Tailwind CSS"],
+        desc: "Antarmuka pelacakan dokumen untuk alur kerja operasional, dibangun dari desain UI/UX.",
+        highlights: ["Pelacakan status dokumen", "Tampilan sesuai peran pengguna", "Log aktivitas"],
+        images: shots(2),
+      },
+      {
+        id: "rampcheck",
+        title: "Rampcheck Nasional",
+        type: "Transportation Inspection System",
+        role: "Front-End Developer · Tim", // (sesuaikan)
+        tools: ["Next.js", "React.js", "Tailwind CSS"],
+        desc: "Antarmuka web inspeksi bus untuk penilaian kelayakan kendaraan, mendigitalkan formulir inspeksi.",
+        highlights: ["Formulir inspeksi digital", "Penilaian kelayakan kendaraan", "Responsif untuk dipakai di lapangan"],
+        images: shots(3),
+      },
+      {
+        id: "bimbim",
+        title: "Bimbim",
+        type: "Digital Cashier & Financial Reporting",
+        role: "Full-Stack Developer · Individu", // (sesuaikan)
+        tools: ["Web App"], // (ganti dengan tools asli)
+        desc: "Aplikasi kasir digital dengan manajemen transaksi dan laporan keuangan.",
+        highlights: ["Pencatatan transaksi", "Laporan keuangan"],
+        images: shots(4),
+      },
+      {
+        id: "kerthi-bali-santhi",
+        title: "Kerthi Bali Santhi",
+        type: "Digital Dashboard",
+        role: "Full-Stack Developer · Tim", // (sesuaikan)
+        tools: ["Laravel", "Tailwind CSS", "Chart.js"],
+        desc: "Dashboard perusahaan daerah Bali dengan visualisasi data operasional interaktif.",
+        highlights: ["Grafik data operasional", "Ringkasan data dalam satu layar"],
+        images: shots(5),
+      },
+      {
+        id: "jaring-company-profile",
+        title: "Jaring Company Profile",
+        type: "Corporate Website",
+        role: "Front-End Developer · Tim", // (sesuaikan)
+        tools: ["Next.js", "Tailwind CSS"], // (sesuaikan)
+        desc: "Website perusahaan responsif berisi profil, produk, dan layanan.",
+        highlights: ["Layout responsif", "Halaman profil, produk, dan layanan"],
+        images: shots(6),
+      },
+    ],
+  },
+  {
+    id: "uiux",
+    label: "UI/UX Design",
+    short: "UI/UX",
+    typeLabel: "Jenis desain",
+    toolsLabel: "Tools",
+    projects: [
+      // GANTI semua placeholder di bawah dengan proyek UI/UX Anda
+      { id: "uiux-1", title: "Proyek UI/UX 1", type: "Mobile App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Riset pengguna", "Wireframe dan prototype"], images: shots(7) },
+      { id: "uiux-2", title: "Proyek UI/UX 2", type: "Web App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Design system", "Prototype interaktif"], images: shots(8) },
+      { id: "uiux-3", title: "Proyek UI/UX 3", type: "Dashboard Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Visualisasi data"], images: shots(9) },
+      { id: "uiux-4", title: "Proyek UI/UX 4", type: "Landing Page", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Layout responsif"], images: shots(10) },
+      { id: "uiux-5", title: "Proyek UI/UX 5", type: "E-Commerce App", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Alur checkout"], images: shots(11) },
+      { id: "uiux-6", title: "Proyek UI/UX 6", type: "Branding & Logo", role: "Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Identitas visual"], images: shots(12) },
+    ],
+  },
+  {
+    id: "photo",
+    label: "Photographer",
+    short: "Foto",
+    typeLabel: "Kategori foto",
+    toolsLabel: "Peralatan",
+    projects: [
+      // GANTI semua placeholder di bawah dengan proyek fotografi Anda
+      { id: "foto-1", title: "Proyek Foto 1", type: "Portrait", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(13) },
+      { id: "foto-2", title: "Proyek Foto 2", type: "Event", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(14) },
+      { id: "foto-3", title: "Proyek Foto 3", type: "Product", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(15) },
+      { id: "foto-4", title: "Proyek Foto 4", type: "Landscape", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(16) },
+      { id: "foto-5", title: "Proyek Foto 5", type: "Street", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(17) },
+      { id: "foto-6", title: "Proyek Foto 6", type: "Wisuda", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(18) },
+    ],
+  },
 ];
+
+/* ───────────── Data lain ───────────── */
 
 export const experiences = [
   {
