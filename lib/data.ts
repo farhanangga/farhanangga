@@ -47,24 +47,24 @@ export const profile = {
 };
 
 export const roles = [
-  { label: "Software Engineer", href: "/apps", color: "#6366F1", text: "#fff", icon: "terminal" },
-  { label: "UI/UX Designer", href: "/uiux", color: "#F25C5C", text: "#000", icon: "palette" },
-  { label: "Photography", href: "/photography", color: "#FFC857", text: "#000", icon: "camera" },
+  { label: "Software Engineer", href: "/projects?role=software", color: "#6366F1", text: "#fff", icon: "terminal" },
+  { label: "UI/UX Designer", href: "/projects?role=uiux", color: "#F25C5C", text: "#000", icon: "palette" },
+  { label: "Photography", href: "/projects?role=photography", color: "#FFC857", text: "#000", icon: "camera" },
 ];
 
 export const navLinks = [
   { label: "Blog", href: "/blog", locked: true },
-  { label: "Apps", href: "/apps" },
+  { label: "Apps", href: "/projects?role=software" },
   { label: "Home", href: "/" },
-  { label: "Photography", href: "/photography" },
-  { label: "UI/UX", href: "/uiux" },
+  { label: "Photography", href: "/projects?role=photography" },
+  { label: "UI/UX", href: "/projects?role=uiux" },
 ];
 
 // Ganti href dengan username asli Anda
 export const contacts = [
-  { platform: "LinkedIn", href: "https://linkedin.com", icon: "linkedin" },
-  { platform: "GitHub", href: "https://github.com", icon: "github" },
-  { platform: "Instagram", href: "https://instagram.com", icon: "instagram" },
+  { platform: "LinkedIn", href: "https://linkedin.com/in/farhan-angga-riyanto-7a29aa246/", icon: "linkedin" },
+  { platform: "GitHub", href: "https://github.com/farhanangga", icon: "github" },
+  { platform: "Instagram", href: "https://instagram.com/_frhnangga", icon: "instagram" },
 ];
 
 /* ───────────── Proyek (dipakai komponen BestProject) ───────────── */

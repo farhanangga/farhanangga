@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion, MotionConfig, type Variants } from "framer-motion";
 import { contacts, navLinks } from "../lib/data";
 import { mono } from "./fonts";
@@ -38,15 +38,29 @@ const item: Variants = {
 };
 
 /* -------------------------------- Navbar -------------------------------- */
-export function Navbar() {
+function NavbarInner() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const search = useSearchParams();
+  const role = search.get("role");
 
-  // tutup menu saat pindah halaman
+  /**
+   * Link aktif: path harus sama. Kalau href punya ?role=..., role di URL juga
+   * harus sama (contoh: /projects?role=uiux). Kalau href tanpa query, URL
+   * tidak boleh punya ?role.
+   */
+  const isActive = (href: string) => {
+    const [path, qs] = href.split("?");
+    if (path !== pathname) return false;
+    const want = new URLSearchParams(qs ?? "").get("role");
+    return want ? want === role : !role;
+  };
+
+  // tutup menu saat pindah halaman / ganti filter
   useEffect(() => {
     setOpen(false);
-  }, [pathname]);
+  }, [pathname, role]);
 
   // kunci scroll, tutup dengan Escape, tutup otomatis saat layar melebar ke desktop
   useEffect(() => {
@@ -82,19 +96,20 @@ export function Navbar() {
             Angga
           </Link>
 
-          {/* ---------------- Desktop nav (tidak berubah) ---------------- */}
+          {/* ---------------- Desktop nav ---------------- */}
           <nav
             aria-label="Navigasi utama"
             onMouseLeave={() => setHovered(null)}
             className="hidden items-center rounded-full border border-white/10 bg-black/50 p-1.5 backdrop-blur-md md:flex"
           >
             {navLinks.map((l) => {
-              const showPill = !l.locked && (hovered === l.label || (hovered === null && l.href === "/"));
+              const showPill = !l.locked && (hovered === l.label || (hovered === null && isActive(l.href)));
               return (
                 <motion.div key={l.label} whileHover={l.locked ? { x: [0, -3, 3, -3, 0] } : undefined} transition={{ duration: 0.35 }}>
                   <Link
                     href={l.locked ? "#" : l.href}
                     aria-disabled={l.locked}
+                    aria-current={!l.locked && isActive(l.href) ? "page" : undefined}
                     title={l.locked ? "Halaman ini belum tersedia" : undefined}
                     onMouseEnter={() => setHovered(l.label)}
                     className={`relative flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF] ${l.locked ? "cursor-not-allowed text-white/40" : "text-white"}`}
@@ -191,7 +206,7 @@ export function Navbar() {
 
               <motion.ul variants={group} initial="hidden" animate="show" exit="exit" className="relative">
                 {navLinks.map((l, i) => {
-                  const active = !l.locked && l.href === pathname;
+                  const active = !l.locked && isActive(l.href);
                   return (
                     <motion.li key={l.label} variants={item} className="border-b border-white/10">
                       <Link
@@ -276,5 +291,15 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </MotionConfig>
+  );
+}
+
+/** useSearchParams wajib dibungkus Suspense. Dibungkus di sini supaya
+ *  <Navbar /> bisa dipakai di halaman mana pun tanpa perubahan. */
+export function Navbar() {
+  return (
+    <Suspense fallback={null}>
+      <NavbarInner />
+    </Suspense>
   );
 }

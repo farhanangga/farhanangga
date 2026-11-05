@@ -67,17 +67,6 @@ export function Footer() {
         <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr] lg:gap-10">
           {/* ── Kolom 1: ajakan ── */}
           <div>
-            <motion.span
-              {...fade()}
-              className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              </span>
-              Terbuka untuk proyek &amp; kolaborasi
-            </motion.span>
-
             <h2
               className={`${mono.className} mt-5 text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-6xl`}
               aria-label="Mari bekerja sama"
