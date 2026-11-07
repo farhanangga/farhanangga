@@ -53,11 +53,11 @@ export const roles = [
 ];
 
 export const navLinks = [
-  { label: "Blog", href: "/blog", locked: true },
-  { label: "Apps", href: "/projects?role=software" },
   { label: "Home", href: "/" },
-  { label: "Photography", href: "/projects?role=photography" },
-  { label: "UI/UX", href: "/projects?role=uiux" },
+  { label: "Projects", href: "/projects" },
+  { label: "Activity", href: "/activity" },
+  { label: "Blog", href: "/blog" },
+  { label: "Contact", href: "/contact" },
 ];
 
 // Ganti href dengan username asli Anda

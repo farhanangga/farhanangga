@@ -12,9 +12,9 @@ import { EASE, Tilt } from "./ui";
 /* ───────────── Konfigurasi ───────────── */
 
 const ALIASES: Record<string, string[]> = {
-  software: ["apps", "app", "web"],
-  uiux: ["ui-ux", "ui", "ux"],
-  photo: ["photography", "foto"],
+  software: ["Software Engineer", "app", "web"],
+  uiux: ["UI/UX Designer", "ui", "ux"],
+  photo: ["photographer", "foto"],
 };
 function resolveTab(param: string | null): ProjectTab | null {
   if (!param) return null;
@@ -30,15 +30,15 @@ const COPY: Record<string, { title: string; text: string }> = {
     text: "Kumpulan karya saya dari tiga bidang: membangun aplikasi, merancang UI/UX, dan fotografi.",
   },
   software: {
-    title: "Apps",
+    title: "Software Engineer",
     text: "Aplikasi dan website yang saya bangun, dari antarmuka sampai logika di baliknya.",
   },
   uiux: {
-    title: "UI/UX Design",
+    title: "UI/UX Designer",
     text: "Rancangan antarmuka dan alur pengguna, dari wireframe sampai prototipe.",
   },
   photo: {
-    title: "Photography",
+    title: "Photographer",
     text: "Karya fotografi yang saya ambil dan olah sendiri.",
   },
 };

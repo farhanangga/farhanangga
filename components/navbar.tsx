@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { AnimatePresence, motion, MotionConfig, type Variants } from "framer-motion";
+import { motion, MotionConfig, type Variants } from "framer-motion";
 import { contacts, navLinks } from "../lib/data";
 import { mono } from "./fonts";
 import { EASE, Icon } from "./ui";
@@ -26,15 +26,33 @@ function Burger({ open }: { open: boolean }) {
 }
 
 /* ------------------------------- Variants ------------------------------- */
-const group: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } },
-  exit: { transition: { staggerChildren: 0.03, staggerDirection: -1 } },
+/* Semua pakai state "open" / "closed" yang diwariskan dari panel. */
+const curtainV: Variants = {
+  closed: {
+    y: "-100%",
+    transition: { duration: 0.7, delay: 0.08, ease: EASE },
+    transitionEnd: { visibility: "hidden" },
+  },
+  open: { y: 0, visibility: "visible", transition: { duration: 0.7, ease: EASE } },
 };
+
+const panelV: Variants = {
+  closed: {
+    y: "-100%",
+    transition: { duration: 0.6, ease: EASE },
+    transitionEnd: { visibility: "hidden" },
+  },
+  open: { y: 0, visibility: "visible", transition: { duration: 0.7, delay: 0.1, ease: EASE } },
+};
+
+const group: Variants = {
+  closed: { transition: { staggerChildren: 0.03, staggerDirection: -1 } },
+  open: { transition: { staggerChildren: 0.08, delayChildren: 0.4 } },
+};
+
 const item: Variants = {
-  hidden: { y: 46, opacity: 0, filter: "blur(10px)" },
-  show: { y: 0, opacity: 1, filter: "blur(0px)", transition: { duration: 0.7, ease: EASE } },
-  exit: { y: -14, opacity: 0, transition: { duration: 0.2 } },
+  closed: { y: 20, opacity: 0, filter: "blur(10px)", transition: { duration: 0.2 } },
+  open: { y: 0, opacity: 1, filter: "blur(0px)", transition: { duration: 0.7, ease: EASE } },
 };
 
 /* -------------------------------- Navbar -------------------------------- */
@@ -47,8 +65,7 @@ function NavbarInner() {
 
   /**
    * Link aktif: path harus sama. Kalau href punya ?role=..., role di URL juga
-   * harus sama (contoh: /projects?role=uiux). Kalau href tanpa query, URL
-   * tidak boleh punya ?role.
+   * harus sama. Kalau href tanpa query, URL tidak boleh punya ?role.
    */
   const isActive = (href: string) => {
     const [path, qs] = href.split("?");
@@ -90,7 +107,6 @@ function NavbarInner() {
         transition={{ duration: 0.9, ease: EASE }}
         className="fixed inset-x-0 top-0 z-[9999] px-4 pt-4 sm:px-8 sm:pt-6"
       >
-        {/* mobile: seluruh bar jadi pill glass hitam (sama seperti pill di desktop) */}
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 max-md:rounded-full max-md:border max-md:border-white/10 max-md:bg-black/50 max-md:py-1.5 max-md:pl-6 max-md:pr-1.5 max-md:backdrop-blur-md">
           <Link href="/" className={`${mono.className} text-2xl font-bold transition-transform hover:scale-110`}>
             Angga
@@ -164,138 +180,121 @@ function NavbarInner() {
         </div>
       </motion.header>
 
-      {/* ---------------- Menu mobile: turun dari atas ---------------- */}
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* lapisan ungu: muncul duluan, jadi garis aksen di tepi bawah panel */}
-            <motion.div
-              key="curtain"
-              aria-hidden
-              className="fixed inset-x-0 top-0 z-[9997] h-dvh rounded-b-[2rem] bg-[#6C63FF] md:hidden"
-              initial={{ y: "-100%" }}
-              animate={{ y: 0, transition: { duration: 0.7, ease: EASE } }}
-              exit={{ y: "-100%", transition: { duration: 0.7, delay: 0.08, ease: EASE } }}
-            />
+      {/* ---------------- Menu mobile ----------------
+          Selalu ter-mount (tanpa AnimatePresence). Satu state `open` menggerakkan
+          semuanya, jadi buka-tutup cepat tetap konsisten. */}
+      <motion.div
+        aria-hidden
+        variants={curtainV}
+        initial="closed"
+        animate={open ? "open" : "closed"}
+        className="invisible fixed inset-x-0 top-0 z-[9997] h-dvh rounded-b-[2rem] bg-[#6C63FF] md:hidden"
+      />
 
-            {/* panel utama */}
-            <motion.aside
-              key="panel"
-              id="mobile-menu"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Menu navigasi"
-              className="fixed inset-x-0 top-0 z-[9998] flex h-[calc(100dvh-0.75rem)] flex-col overflow-y-auto overflow-x-hidden rounded-b-[2rem] bg-[#0B0B16] px-6 pb-8 pt-28 md:hidden"
-              initial={{ y: "-100%" }}
-              animate={{ y: 0, transition: { duration: 0.7, delay: 0.1, ease: EASE } }}
-              exit={{ y: "-100%", transition: { duration: 0.6, ease: EASE } }}
-            >
-              {/* dekorasi glow */}
-              <div aria-hidden className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-[#6C63FF]/30 blur-[90px]" />
-              <div aria-hidden className="pointer-events-none absolute -left-24 bottom-10 h-64 w-64 rounded-full bg-[#FFC857]/10 blur-[90px]" />
+      <motion.aside
+        id="mobile-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu navigasi"
+        aria-hidden={!open}
+        variants={panelV}
+        initial="closed"
+        animate={open ? "open" : "closed"}
+        className="invisible fixed inset-x-0 top-0 z-[9998] flex h-[calc(100dvh-0.75rem)] flex-col overflow-y-auto overflow-x-hidden rounded-b-[2rem] bg-[#0B0B16] px-6 pb-8 pt-28 md:hidden"
+      >
+        {/* dekorasi glow */}
+        <div aria-hidden className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-[#6C63FF]/30 blur-[90px]" />
+        <div aria-hidden className="pointer-events-none absolute -left-24 bottom-10 h-64 w-64 rounded-full bg-[#FFC857]/10 blur-[90px]" />
 
-              <motion.p
-                variants={item}
-                initial="hidden"
-                animate="show"
-                exit="exit"
-                className={`${mono.className} relative mb-2 text-xs uppercase tracking-[0.25em] text-white/40`}
-              >
-                Menu
-              </motion.p>
+        <motion.p
+          variants={item}
+          className={`${mono.className} relative mb-2 text-xs uppercase tracking-[0.25em] text-white/40`}
+        >
+          Menu
+        </motion.p>
 
-              <motion.ul variants={group} initial="hidden" animate="show" exit="exit" className="relative">
-                {navLinks.map((l, i) => {
-                  const active = !l.locked && isActive(l.href);
-                  return (
-                    <motion.li key={l.label} variants={item} className="border-b border-white/10">
-                      <Link
-                        href={l.locked ? "#" : l.href}
-                        aria-disabled={l.locked}
-                        aria-current={active ? "page" : undefined}
-                        onClick={(e) => {
-                          if (l.locked) e.preventDefault();
-                          else setOpen(false);
-                        }}
-                        className="group flex items-center gap-4 py-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
-                      >
-                        <span className={`${mono.className} w-7 text-xs text-[#6C63FF]`}>{String(i + 1).padStart(2, "0")}</span>
+        <motion.ul variants={group} className="relative">
+          {navLinks.map((l, i) => {
+            const active = !l.locked && isActive(l.href);
+            return (
+              <motion.li key={l.label} variants={item} className="border-b border-white/10">
+                <Link
+                  href={l.locked ? "#" : l.href}
+                  aria-disabled={l.locked}
+                  aria-current={active ? "page" : undefined}
+                  onClick={(e) => {
+                    if (l.locked) e.preventDefault();
+                    else setOpen(false);
+                  }}
+                  className="group flex items-center gap-4 py-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
+                >
+                  <span className={`${mono.className} w-7 text-xs text-[#6C63FF]`}>{String(i + 1).padStart(2, "0")}</span>
 
-                        <motion.span
-                          whileTap={l.locked ? { x: [0, -8, 8, -8, 0] } : { x: 8 }}
-                          transition={{ duration: 0.35 }}
-                          className={`flex-1 text-[2rem] font-bold leading-none tracking-tight ${
-                            l.locked ? "text-white/30" : active ? "text-white" : "text-white/75"
-                          }`}
-                        >
-                          {l.label}
-                        </motion.span>
+                  <motion.span
+                    whileTap={l.locked ? { x: [0, -8, 8, -8, 0] } : { x: 8 }}
+                    transition={{ duration: 0.35 }}
+                    className={`flex-1 text-[2rem] font-bold leading-none tracking-tight ${
+                      l.locked ? "text-white/30" : active ? "text-white" : "text-white/75"
+                    }`}
+                  >
+                    {l.label}
+                  </motion.span>
 
-                        {l.locked ? (
-                          <span className={`${mono.className} flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-white/40`}>
-                            <Icon name="lock" className="h-3 w-3" />
-                            Segera
-                          </span>
-                        ) : active ? (
-                          <span className="h-2.5 w-2.5 rounded-full bg-[#6C63FF] shadow-[0_0_14px_3px_#6C63FF]" />
-                        ) : (
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-5 w-5 -translate-x-1 text-white/40 transition-transform group-active:translate-x-1"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden
-                          >
-                            <path d="M5 12h14M13 6l6 6-6 6" />
-                          </svg>
-                        )}
-                      </Link>
-                    </motion.li>
-                  );
-                })}
-              </motion.ul>
-
-              {/* kontak */}
-              <motion.div
-                variants={group}
-                initial="hidden"
-                animate="show"
-                exit="exit"
-                className="relative mt-auto pt-10"
-              >
-                <motion.p variants={item} className={`${mono.className} mb-4 text-xs uppercase tracking-[0.25em] text-white/40`}>
-                  Temukan saya di
-                </motion.p>
-                <div className="flex flex-wrap gap-3">
-                  {contacts.map((c) => (
-                    <motion.a
-                      key={c.platform}
-                      variants={item}
-                      href={c.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={c.platform}
-                      whileTap={{ scale: 0.88, backgroundColor: "#6C63FF" }}
-                      className="grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
+                  {l.locked ? (
+                    <span className={`${mono.className} flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-white/40`}>
+                      <Icon name="lock" className="h-3 w-3" />
+                      Segera
+                    </span>
+                  ) : active ? (
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#6C63FF] shadow-[0_0_14px_3px_#6C63FF]" />
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 -translate-x-1 text-white/40 transition-transform group-active:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
                     >
-                      <Icon name={c.icon} className="h-6 w-6" />
-                    </motion.a>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  )}
+                </Link>
+              </motion.li>
+            );
+          })}
+        </motion.ul>
+
+        {/* kontak */}
+        <motion.div variants={group} className="relative mt-auto pt-10">
+          <motion.p variants={item} className={`${mono.className} mb-4 text-xs uppercase tracking-[0.25em] text-white/40`}>
+            Temukan saya di
+          </motion.p>
+          <div className="flex flex-wrap gap-3">
+            {contacts.map((c) => (
+              <motion.a
+                key={c.platform}
+                variants={item}
+                href={c.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={c.platform}
+                whileTap={{ scale: 0.88, backgroundColor: "#6C63FF" }}
+                className="grid h-14 w-14 place-items-center rounded-full border border-white/10 bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
+              >
+                <Icon name={c.icon} className="h-6 w-6" />
+              </motion.a>
+            ))}
+          </div>
+        </motion.div>
+      </motion.aside>
     </MotionConfig>
   );
 }
 
-/** useSearchParams wajib dibungkus Suspense. Dibungkus di sini supaya
- *  <Navbar /> bisa dipakai di halaman mana pun tanpa perubahan. */
+/** useSearchParams wajib dibungkus Suspense. */
 export function Navbar() {
   return (
     <Suspense fallback={null}>

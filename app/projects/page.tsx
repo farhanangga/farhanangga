@@ -8,7 +8,7 @@ import { MotionProvider, ScrollProgress } from "../../components/ui";
 
 export const metadata: Metadata = {
   title: "Proyek | Farhan Angga Riyanto",
-  description: "Kumpulan proyek Apps, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
+  description: "Kumpulan proyek Software Engineer, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
 };
 
 /**
