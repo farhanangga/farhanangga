@@ -52,7 +52,13 @@ export const roles = [
   { label: "Photography", href: "/projects?role=photography", color: "#FFC857", text: "#000", icon: "camera" },
 ];
 
-export const navLinks = [
+export type NavLink = {
+  label: string;
+  href: string;
+  locked?: boolean; // true = halaman belum tersedia
+};
+
+export const navLinks: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Projects", href: "/projects" },
   { label: "Activity", href: "/activity" },
