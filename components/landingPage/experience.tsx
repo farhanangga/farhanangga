@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -13,24 +13,31 @@ import {
   useTransform,
 } from "framer-motion";
 import { Award, Check, ChevronDown, MapPin, Trophy, Users, type LucideIcon } from "lucide-react";
-import { certs, experiences, marqueeTools, orgs } from "../lib/data";
-import { mono } from "./fonts";
-import { CountUp, EASE, Heading, Tilt } from "./ui";
+import {
+  certs,
+  employmentLabel,
+  experiences,
+  formatPeriod,
+  orgs,
+  type EmploymentType,
+  type Experience,
+} from "@/lib/data";
+import { mono } from "@/components/fonts";
+import { CountUp, EASE, Heading, Tilt } from "@/components/ui";
 
 /* ───────────── Helper ───────────── */
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Cari nama tools (dari marqueeTools) yang disebut di poin pengalaman */
-function techOf(points: string[]) {
-  const text = points.join(" ");
-  return marqueeTools.filter((t) =>
-    new RegExp(`(^|[^a-z0-9])${escapeRe(t)}([^a-z0-9]|$)`, "i").test(text)
-  );
-}
+/** Semua tools unik dari data pengalaman (ditulis eksplisit di data.ts) */
+const STACK = Array.from(new Set(experiences.flatMap((e) => e.tools ?? [])));
 
-const STACK = Array.from(new Set(experiences.flatMap((e) => techOf(e.points))));
+/** Warna badge status pekerjaan */
+const TYPE_STYLE: Record<EmploymentType, string> = {
+  freelance: "bg-[#FFC857]/15 text-[#FFC857]",
+  internship: "bg-[#6C63FF]/20 text-[#A9A4FF]",
+  fulltime: "bg-white/10 text-white/70",
+};
 
 type Row = { title: string; sub: string; tag: string; Icon: LucideIcon };
 
@@ -118,7 +125,7 @@ function ExperienceItem({
   open,
   onToggle,
 }: {
-  e: (typeof experiences)[number];
+  e: Experience;
   i: number;
   total: number;
   open: boolean;
@@ -127,14 +134,11 @@ function ExperienceItem({
   const ref = useRef<HTMLLIElement>(null);
   // aktif saat item melewati garis tengah layar
   const active = useInView(ref, { margin: "-45% 0px -45% 0px" });
-  const tags = useMemo(() => techOf(e.points), [e.points]);
 
-  const isNow = /sekarang/i.test(e.period);
-  const isIntern = /magang/i.test(e.role);
-  const isFreelance = /freelance/i.test(e.company);
-  const role = e.role.replace(/\s*\(.*?\)\s*/g, " ").trim();
-  const company = e.company.replace(/\s*\(.*?\)\s*/g, " ").trim();
-  const initials = company
+  const tags = e.tools ?? [];
+  const period = formatPeriod(e.start, e.end);
+  const isNow = !e.end;
+  const initials = e.company
     .replace(/^PT\s+/i, "")
     .split(" ")
     .filter(Boolean)
@@ -179,16 +183,7 @@ function ExperienceItem({
 
       {/* kolom periode (desktop) */}
       <div className="hidden pt-7 text-right md:block">
-        <p className={`${mono.className} text-sm text-[#FFC857]`}>{e.period}</p>
-        {isNow && (
-          <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-300">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            Aktif
-          </span>
-        )}
+        <p className={`${mono.className} text-sm text-[#FFC857]`}>{period}</p>
         <p className={`${mono.className} mt-3 text-xs text-white/30`}>
           {pad(i + 1)} / {pad(total)}
         </p>
@@ -222,26 +217,23 @@ function ExperienceItem({
 
             <span className="min-w-0 flex-1">
               <span className={`${mono.className} block text-[11px] text-[#FFC857] sm:text-xs md:hidden`}>
-                {e.period}
+                {period}
               </span>
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="break-words text-base font-semibold leading-snug sm:text-xl">
-                  {role}
+                  {e.role}
                 </span>
                 {isNow && (
                   <span className={`${badge} bg-emerald-400/10 text-emerald-300 md:hidden`}>
                     Aktif
                   </span>
                 )}
-                {isIntern && (
-                  <span className={`${badge} bg-[#6C63FF]/20 text-[#A9A4FF]`}>Magang</span>
-                )}
-                {isFreelance && (
-                  <span className={`${badge} bg-[#FFC857]/15 text-[#FFC857]`}>Freelance</span>
+                {e.type && (
+                  <span className={`${badge} ${TYPE_STYLE[e.type]}`}>{employmentLabel[e.type]}</span>
                 )}
               </span>
               <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-white/60 sm:text-sm">
-                <span className="break-words">{company}</span>
+                <span className="break-words">{e.company}</span>
                 <span className="inline-flex items-center gap-1 text-white/45">
                   <MapPin size={13} className="shrink-0" /> {e.place}
                 </span>
@@ -350,7 +342,7 @@ function Timeline() {
 
       {experiences.map((e, i) => (
         <ExperienceItem
-          key={e.company + e.period}
+          key={e.id}
           e={e}
           i={i}
           total={experiences.length}
@@ -479,7 +471,7 @@ export function Experience() {
 
   const stats = [
     { label: "Posisi", to: experiences.length },
-    { label: "Teknologi dipakai", to: STACK.length },
+    { label: "Tools dipakai", to: STACK.length },
     { label: "Organisasi", to: orgs.length },
     { label: "Sertifikat & penghargaan", to: certs.length },
   ];

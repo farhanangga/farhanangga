@@ -4,10 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "framer-motion";
 import { ArrowUpRight, Images } from "lucide-react";
-import { projectTabs, type ProjectItem, type ProjectTab } from "../lib/data";
-import { mono } from "./fonts";
+import { projectTabs, type ProjectItem, type ProjectTab } from "../../lib/data";
+import { mono } from "../fonts";
 import { ProjectModal, Shot, pad, themeOf } from "./projectModal";
-import { EASE, Tilt } from "./ui";
+import { EASE, Tilt } from "../ui";
 
 /* ───────────── Konfigurasi ───────────── */
 

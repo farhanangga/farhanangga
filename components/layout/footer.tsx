@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Mail, MapPin, MessageCircle } from "lucide-react";
-import { contacts, profile } from "../lib/data";
-import { mono } from "./fonts";
-import { EASE, Icon } from "./ui";
+import { contacts, profile } from "../../lib/data";
+import { mono } from "../fonts";
+import { EASE, Icon } from "../ui";
 
 /* ───────────── Pengaturan (sesuaikan) ───────────── */
 

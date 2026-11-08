@@ -46,10 +46,11 @@ export const profile = {
   location: "Cirebon, Indonesia",
 };
 
+// href memakai id tab di projectTabs: software | uiux | photo
 export const roles = [
   { label: "Software Engineer", href: "/projects?role=software", color: "#6366F1", text: "#fff", icon: "terminal" },
   { label: "UI/UX Designer", href: "/projects?role=uiux", color: "#F25C5C", text: "#000", icon: "palette" },
-  { label: "Photography", href: "/projects?role=photography", color: "#FFC857", text: "#000", icon: "camera" },
+  { label: "Photography", href: "/projects?role=photo", color: "#FFC857", text: "#000", icon: "camera" },
 ];
 
 export type NavLink = {
@@ -75,9 +76,17 @@ export const contacts = [
 
 /* ───────────── Proyek (dipakai komponen BestProject) ───────────── */
 
-/** 5 gambar per proyek: /assets/project/project{n}-1.png sampai project{n}-5.png */
-const shots = (n: number) =>
-  Array.from({ length: 5 }, (_, i) => `/assets/project/project${n}-${i + 1}.png`);
+/**
+ * Gambar proyek: /assets/project/project{n}-1.png dst.
+ * Default 5 gambar. Kalau proyek hanya punya 3 gambar, tulis shots(n, 3).
+ */
+const shots = (n: number, count = 5) =>
+  Array.from({ length: count }, (_, i) => `/assets/project/project${n}-${i + 1}.png`);
+
+/** TODO: DUMMY. Ganti dengan link asli tiap proyek, lalu hapus helper ini. */
+const dummyUrl = (slug: string) => `https://example.com/${slug}`;
+/** TODO: DUMMY. Ganti dengan link repository asli (atau hapus baris repo kalau repo private). */
+const dummyRepo = (slug: string) => `https://github.com/farhanangga/${slug}`;
 
 export type ProjectItem = {
   id: string;
@@ -88,6 +97,17 @@ export type ProjectItem = {
   desc: string;
   highlights: string[];
   images: string[];
+  /**
+   * Link halaman web proyek (demo / live / prototype / album).
+   * Opsional: kalau kosong, tombol di modal otomatis disembunyikan.
+   * Harus diawali https:// atau http://
+   */
+  url?: string;
+  /**
+   * Link repository GitHub proyek.
+   * Opsional: kalau kosong, tombol repository di modal otomatis disembunyikan.
+   */
+  repo?: string;
 };
 
 export type ProjectTab = {
@@ -96,6 +116,8 @@ export type ProjectTab = {
   short: string;
   typeLabel: string;
   toolsLabel: string;
+  /** Teks tombol di modal. Default: "Kunjungi website" */
+  linkLabel?: string;
   projects: ProjectItem[];
 };
 
@@ -106,6 +128,7 @@ export const projectTabs: ProjectTab[] = [
     short: "Software",
     typeLabel: "Jenis aplikasi",
     toolsLabel: "Tools",
+    linkLabel: "Kunjungi website",
     projects: [
       {
         id: "casepose",
@@ -121,56 +144,68 @@ export const projectTabs: ProjectTab[] = [
           "Riwayat transaksi dan laporan",
         ],
         images: shots(1),
+        url: dummyUrl("casepose"), // TODO: link asli
+        repo: dummyRepo("casepose"), // TODO: link repo asli
       },
       {
         id: "sloglab",
         title: "SlogLab",
         type: "Document Tracking System",
-        role: "Front-End Developer · Tim", // (sesuaikan)
+        role: "Front-End Developer · Tim", // TODO: sesuaikan
         tools: ["React.js", "Tailwind CSS"],
         desc: "Antarmuka pelacakan dokumen untuk alur kerja operasional, dibangun dari desain UI/UX.",
         highlights: ["Pelacakan status dokumen", "Tampilan sesuai peran pengguna", "Log aktivitas"],
         images: shots(2),
+        url: dummyUrl("sloglab"), // TODO: link asli
+        repo: dummyRepo("sloglab"), // TODO: link repo asli
       },
       {
         id: "rampcheck",
         title: "Rampcheck Nasional",
         type: "Transportation Inspection System",
-        role: "Front-End Developer · Tim", // (sesuaikan)
+        role: "Front-End Developer · Tim", // TODO: sesuaikan
         tools: ["Next.js", "React.js", "Tailwind CSS"],
         desc: "Antarmuka web inspeksi bus untuk penilaian kelayakan kendaraan, mendigitalkan formulir inspeksi.",
         highlights: ["Formulir inspeksi digital", "Penilaian kelayakan kendaraan", "Responsif untuk dipakai di lapangan"],
         images: shots(3),
+        url: dummyUrl("rampcheck"), // TODO: link asli
+        repo: dummyRepo("rampcheck"), // TODO: link repo asli
       },
       {
         id: "bimbim",
         title: "Bimbim",
         type: "Digital Cashier & Financial Reporting",
-        role: "Full-Stack Developer · Individu", // (sesuaikan)
-        tools: ["Web App"], // (ganti dengan tools asli)
+        role: "Full-Stack Developer · Individu", // TODO: sesuaikan
+        tools: ["Web App"], // TODO: ganti dengan tools asli
         desc: "Aplikasi kasir digital dengan manajemen transaksi dan laporan keuangan.",
         highlights: ["Pencatatan transaksi", "Laporan keuangan"],
         images: shots(4),
+        url: dummyUrl("bimbim"), // TODO: link asli
+        repo: dummyRepo("bimbim"), // TODO: link repo asli
       },
       {
         id: "kerthi-bali-santhi",
         title: "Kerthi Bali Santhi",
         type: "Digital Dashboard",
-        role: "Full-Stack Developer · Tim", // (sesuaikan)
+        role: "Full-Stack Developer · Tim", // TODO: sesuaikan
         tools: ["Laravel", "Tailwind CSS", "Chart.js"],
         desc: "Dashboard perusahaan daerah Bali dengan visualisasi data operasional interaktif.",
         highlights: ["Grafik data operasional", "Ringkasan data dalam satu layar"],
         images: shots(5),
+        url: dummyUrl("kerthi-bali-santhi"), // TODO: link asli
+        repo: dummyRepo("kerthi-bali-santhi"), // TODO: link repo asli
       },
       {
         id: "jaring-company-profile",
         title: "Jaring Company Profile",
         type: "Corporate Website",
-        role: "Front-End Developer · Tim", // (sesuaikan)
-        tools: ["Next.js", "Tailwind CSS"], // (sesuaikan)
+        role: "Front-End Developer · Tim", // TODO: sesuaikan
+        tools: ["Next.js", "Tailwind CSS"], // TODO: sesuaikan
         desc: "Website perusahaan responsif berisi profil, produk, dan layanan.",
         highlights: ["Layout responsif", "Halaman profil, produk, dan layanan"],
         images: shots(6),
+        url: dummyUrl("jaring-company-profile"), // TODO: link asli
+        repo: dummyRepo("jaring-company-profile"), // TODO: link repo asli
       },
     ],
   },
@@ -180,14 +215,16 @@ export const projectTabs: ProjectTab[] = [
     short: "UI/UX",
     typeLabel: "Jenis desain",
     toolsLabel: "Tools",
+    linkLabel: "Lihat prototype",
     projects: [
-      // GANTI semua placeholder di bawah dengan proyek UI/UX Anda
-      { id: "uiux-1", title: "Proyek UI/UX 1", type: "Mobile App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Riset pengguna", "Wireframe dan prototype"], images: shots(7) },
-      { id: "uiux-2", title: "Proyek UI/UX 2", type: "Web App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Design system", "Prototype interaktif"], images: shots(8) },
-      { id: "uiux-3", title: "Proyek UI/UX 3", type: "Dashboard Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Visualisasi data"], images: shots(9) },
-      { id: "uiux-4", title: "Proyek UI/UX 4", type: "Landing Page", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Layout responsif"], images: shots(10) },
-      { id: "uiux-5", title: "Proyek UI/UX 5", type: "E-Commerce App", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Alur checkout"], images: shots(11) },
-      { id: "uiux-6", title: "Proyek UI/UX 6", type: "Branding & Logo", role: "Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Identitas visual"], images: shots(12) },
+      // TODO: ganti semua placeholder di bawah dengan proyek UI/UX Anda
+      // url dummy: ganti dengan link prototype Figma, Behance, atau Dribbble
+      { id: "uiux-1", title: "Proyek UI/UX 1", type: "Mobile App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Riset pengguna", "Wireframe dan prototype"], images: shots(7), url: dummyUrl("uiux-1") },
+      { id: "uiux-2", title: "Proyek UI/UX 2", type: "Web App Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Design system", "Prototype interaktif"], images: shots(8), url: dummyUrl("uiux-2") },
+      { id: "uiux-3", title: "Proyek UI/UX 3", type: "Dashboard Design", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Visualisasi data"], images: shots(9), url: dummyUrl("uiux-3") },
+      { id: "uiux-4", title: "Proyek UI/UX 4", type: "Landing Page", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Layout responsif"], images: shots(10), url: dummyUrl("uiux-4") },
+      { id: "uiux-5", title: "Proyek UI/UX 5", type: "E-Commerce App", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Alur checkout"], images: shots(11), url: dummyUrl("uiux-5") },
+      { id: "uiux-6", title: "Proyek UI/UX 6", type: "Branding & Logo", role: "UI/UX Designer", tools: ["Figma"], desc: "Deskripsi singkat proyek.", highlights: ["Identitas visual"], images: shots(12), url: dummyUrl("uiux-6") },
     ],
   },
   {
@@ -196,23 +233,76 @@ export const projectTabs: ProjectTab[] = [
     short: "Foto",
     typeLabel: "Kategori foto",
     toolsLabel: "Peralatan",
+    linkLabel: "Lihat album lengkap",
     projects: [
-      // GANTI semua placeholder di bawah dengan proyek fotografi Anda
-      { id: "foto-1", title: "Proyek Foto 1", type: "Portrait", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(13) },
-      { id: "foto-2", title: "Proyek Foto 2", type: "Event", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(14) },
-      { id: "foto-3", title: "Proyek Foto 3", type: "Product", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(15) },
-      { id: "foto-4", title: "Proyek Foto 4", type: "Landscape", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(16) },
-      { id: "foto-5", title: "Proyek Foto 5", type: "Street", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(17) },
-      { id: "foto-6", title: "Proyek Foto 6", type: "Wisuda", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(18) },
+      // TODO: ganti semua placeholder di bawah dengan proyek fotografi Anda
+      // url dummy: ganti dengan link Google Drive, Instagram, atau album online
+      { id: "foto-1", title: "Proyek Foto 1", type: "Portrait", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(13), url: dummyUrl("foto-1") },
+      { id: "foto-2", title: "Proyek Foto 2", type: "Event", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(14), url: dummyUrl("foto-2") },
+      { id: "foto-3", title: "Proyek Foto 3", type: "Product", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(15), url: dummyUrl("foto-3") },
+      { id: "foto-4", title: "Proyek Foto 4", type: "Landscape", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(16), url: dummyUrl("foto-4") },
+      { id: "foto-5", title: "Proyek Foto 5", type: "Street", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(17), url: dummyUrl("foto-5") },
+      { id: "foto-6", title: "Proyek Foto 6", type: "Wisuda", role: "Photographer", tools: ["Kamera", "Lightroom"], desc: "Deskripsi singkat sesi foto.", highlights: ["Lokasi dan tahun"], images: shots(18), url: dummyUrl("foto-6") },
     ],
   },
 ];
 
 /* ───────────── Data lain ───────────── */
 
-export const experiences = [
+/* ───────────── Pengalaman ───────────── */
+
+export type EmploymentType = "fulltime" | "internship" | "freelance";
+
+export const employmentLabel: Record<EmploymentType, string> = {
+  fulltime: "Full-time",
+  internship: "Magang",
+  freelance: "Freelance",
+};
+
+export type Experience = {
+  id: string;
+  /** Hanya nama jabatan. Status (magang/freelance/full-time) ditulis di field `type`. */
+  role: string;
+  /** Hanya nama perusahaan / tim. */
+  company: string;
+  place: string;
+  /** Opsional: kalau kosong, badge status tidak ditampilkan. */
+  type?: EmploymentType;
+  /** Format "YYYY-MM", contoh "2025-09". */
+  start: string;
+  /** Format "YYYY-MM". Kosongkan kalau masih berjalan (otomatis tampil "Sekarang"). */
+  end?: string;
+  /** Tools yang dipakai, ditulis eksplisit (tidak lagi ditebak dari teks poin). */
+  tools?: string[];
+  points: string[];
+};
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+const parseYM = (s: string) => {
+  const [y, m] = s.split("-").map(Number);
+  return { y, m: m - 1 };
+};
+
+/** "2025-09","2025-12" -> "Sep – Des 2025" | "2021-12","2022-07" -> "Des 2021 – Jul 2022" | tanpa end -> "... – Sekarang" */
+export function formatPeriod(start: string, end?: string) {
+  const a = parseYM(start);
+  if (!end) return `${MONTHS[a.m]} ${a.y} – Sekarang`;
+  const b = parseYM(end);
+  return a.y === b.y
+    ? `${MONTHS[a.m]} – ${MONTHS[b.m]} ${b.y}`
+    : `${MONTHS[a.m]} ${a.y} – ${MONTHS[b.m]} ${b.y}`;
+}
+
+const experienceList: Experience[] = [
   {
-    role: "Front-End Developer", company: "SuCC Team (Freelance)", place: "Remote", period: "Mei 2026 – Sekarang",
+    id: "succ-team",
+    role: "Front-End Developer & UI/UX Designer",
+    company: "SuCC Team",
+    place: "Remote",
+    type: "freelance",
+    start: "2026-05",
+    tools: ["React.js", "Next.js", "Tailwind CSS", "Figma"],
     points: [
       "Membuat antarmuka web responsif dengan React.js, Next.js, dan Tailwind CSS sesuai kebutuhan proyek.",
       "Menerjemahkan desain UI/UX menjadi antarmuka yang konsisten dan berfungsi.",
@@ -220,7 +310,29 @@ export const experiences = [
     ],
   },
   {
-    role: "Front-End Developer (Magang)", company: "PT Jaring Solusi Aplikasi", place: "Jakarta Pusat", period: "Sep – Des 2025",
+    id: "lensoul-pictures",
+    role: "Photographer",
+    company: "Lensoul Pictures",
+    place: "Cirebon & Bandung",
+    type: "freelance",
+    start: "2025-11",
+    tools: ["Lightroom", "Figma", "Canva"],
+    points: [
+      "Memotret klien yang memesan jasa fotografi secara profesional.",
+      "Menyunting hasil foto dengan Lightroom agar tampilannya lebih baik.",
+      "Mengedit materi konten Instagram di Figma dan Canva.",
+      "Mengelola akun Instagram Lensoul Pictures agar lebih menarik dan profesional.",
+    ],
+  },
+  {
+    id: "jaring-solusi-aplikasi",
+    role: "Front-End Developer",
+    company: "PT Jaring Solusi Aplikasi",
+    place: "Jakarta Pusat",
+    type: "internship",
+    start: "2025-09",
+    end: "2025-12",
+    tools: ["React.js", "Next.js", "Tailwind CSS"],
     points: [
       "Mengembangkan antarmuka untuk beberapa proyek aplikasi web dengan React.js, Next.js, dan Tailwind CSS.",
       "Membuat komponen yang bisa dipakai ulang agar tampilan konsisten dan implementasi lebih cepat.",
@@ -228,14 +340,52 @@ export const experiences = [
     ],
   },
   {
-    role: "Front-End Developer (Magang)", company: "PT Masagi Energi Hijau", place: "Sukabumi", period: "Mar – Jun 2025",
+    id: "masagi-energi-hijau",
+    role: "Front-End Developer & UI/UX Designer",
+    company: "PT Masagi Energi Hijau",
+    place: "Sukabumi",
+    type: "internship",
+    start: "2025-03",
+    end: "2025-06",
+    tools: ["Figma", "Next.js", "Tailwind CSS"],
     points: [
       "Merancang antarmuka website di Figma berdasarkan kebutuhan bisnis.",
       "Mengimplementasikan desain Figma dengan Next.js dan Tailwind CSS.",
       "Membuat layout responsif untuk desktop dan mobile.",
     ],
   },
+  {
+    id: "triofa-mps",
+    role: "ATM Cleaning Operator",
+    company: "PT Triofa MPS",
+    place: "Kota Cirebon",
+    type: "fulltime",
+    start: "2021-12",
+    end: "2022-07",
+    points: [
+      "Melaksanakan kegiatan pembersihan dan pemeliharaan rutin ATM sesuai dengan prosedur operasional.",
+      "Menjaga kualitas pekerjaan dan mendukung kegiatan operasional sehari-hari.",
+    ],
+  },
+  {
+    id: "kejari-cirebon",
+    role: "Public Service",
+    company: "Kejaksaan Negeri Kota Cirebon",
+    place: "Kota Cirebon",
+    // type: ... // TODO: isi kalau mau menampilkan badge status (internship / fulltime / freelance)
+    start: "2021-03",
+    end: "2022-06",
+    points: [
+      "Mendukung kegiatan pelayanan publik di lingkup bagian Tindak Pidana Umum (PIDUM) dan Pelanggaran Lalu Lintas (Tilang).",
+      "Membantu kegiatan operasional sehari-hari serta berkomunikasi dengan masyarakat umum.",
+    ],
+  },
 ];
+
+/** Selalu terurut dari yang terbaru (berdasarkan tanggal mulai), jadi urutan di atas tidak wajib rapi. */
+export const experiences: Experience[] = [...experienceList].sort((a, b) =>
+  b.start.localeCompare(a.start)
+);
 
 export const orgs = [
   "Staf Divisi Koordinasi dan Aspirasi, DPM UPI Cibiru (2024 – 2025)",

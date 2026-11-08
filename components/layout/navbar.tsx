@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { motion, MotionConfig, type Variants } from "framer-motion";
-import { contacts, navLinks } from "../lib/data";
-import { mono } from "./fonts";
-import { EASE, Icon } from "./ui";
+import { contacts, navLinks } from "../../lib/data";
+import { mono } from "../fonts";
+import { EASE, Icon } from "../ui";
 
 /* ---------------------------- Hamburger icon ---------------------------- */
 function Burger({ open }: { open: boolean }) {
@@ -109,7 +109,7 @@ function NavbarInner() {
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 max-md:rounded-full max-md:border max-md:border-white/10 max-md:bg-black/50 max-md:py-1.5 max-md:pl-6 max-md:pr-1.5 max-md:backdrop-blur-md">
           <Link href="/" className={`${mono.className} text-2xl font-bold transition-transform hover:scale-110`}>
-            Angga
+            FA
           </Link>
 
           {/* ---------------- Desktop nav ---------------- */}

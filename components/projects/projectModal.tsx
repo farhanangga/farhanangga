@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   AnimatePresence,
@@ -13,6 +14,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   LayoutGrid,
   Palette,
   Pause,
@@ -21,9 +23,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import type { ProjectItem, ProjectTab } from "../lib/data";
-import { mono } from "./fonts";
-import { EASE } from "./ui";
+import type { ProjectItem, ProjectTab } from "../../lib/data";
+import { mono } from "../fonts";
+import { EASE, Icon } from "../ui";
 
 /* ───────────── Konfigurasi bersama ───────────── */
 
@@ -42,6 +44,36 @@ const THEMES: Record<string, Theme> = {
 export const themeOf = (id?: string | null) => THEMES[id ?? "all"] ?? THEMES.all;
 
 export type ModalEntry = { p: ProjectItem; tab: ProjectTab };
+
+/** Ambil hostname dari URL untuk ditampilkan di tombol. Aman terhadap URL yang salah. */
+function hostOf(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** Tampilkan "github.com/owner/repo" dari URL repository. */
+function repoLabel(url: string) {
+  try {
+    const u = new URL(url);
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname}`.replace(/\/$/, "");
+  } catch {
+    return url;
+  }
+}
+
+/** Hanya izinkan http(s) supaya tidak ada link "javascript:" yang lolos dari data. */
+function safeUrl(url?: string) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 
 /* ───────────── Gambar + fallback ───────────── */
 
@@ -302,8 +334,8 @@ const group = {
   show: { transition: { staggerChildren: 0.07, delayChildren: 0.2 } },
 };
 const rise = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
+  hidden: { opacity: 0, y: 20, filter: "blur(10px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease: EASE } },
 };
 const slideX = {
   hidden: { opacity: 0, x: -14 },
@@ -334,6 +366,72 @@ function RevealTitle({ text, className }: { text: string; className?: string }) 
   );
 }
 
+/** Tombol menuju halaman web proyek. Tidak dirender kalau proyek belum punya URL. */
+function VisitButton({ url, label, theme }: { url: string; label: string; theme: Theme }) {
+  return (
+    <motion.a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE, delay: 0.35 } }}
+      whileHover={{ scale: 1.015 }}
+      whileTap={{ scale: 0.98 }}
+      className="group relative flex items-center justify-between gap-3 overflow-hidden rounded-xl px-4 py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+      style={{ background: theme.hex, color: theme.ink }}
+    >
+      {/* kilau saat hover */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[460%]"
+      />
+      <span className="relative min-w-0">
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className={`${mono.className} block truncate text-[11px] opacity-70`}>{hostOf(url)}</span>
+      </span>
+      <span
+        className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        style={{ background: "rgba(0,0,0,0.18)" }}
+      >
+        <ExternalLink size={16} />
+      </span>
+      <span className="sr-only"> (buka di tab baru)</span>
+    </motion.a>
+  );
+}
+
+/** Tombol hitam menuju repository GitHub. Tidak dirender kalau proyek belum punya link repo. */
+function RepoButton({ url }: { url: string }) {
+  return (
+    <motion.a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE, delay: 0.45 } }}
+      whileHover={{ scale: 1.015 }}
+      whileTap={{ scale: 0.98 }}
+      className="group relative flex items-center justify-between gap-3 overflow-hidden rounded-xl border border-white/15 bg-black px-4 py-3.5 text-white outline-none transition-colors hover:border-white/30 focus-visible:ring-2 focus-visible:ring-white/80"
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[460%]"
+      />
+      <span className="relative flex min-w-0 items-center gap-3">
+        <Icon name="github" className="h-5 w-5 shrink-0" />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">Lihat repository</span>
+          <span className={`${mono.className} block truncate text-[11px] text-white/50`}>{repoLabel(url)}</span>
+        </span>
+      </span>
+      <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+        <ExternalLink size={16} />
+      </span>
+      <span className="sr-only"> (buka di tab baru)</span>
+    </motion.a>
+  );
+}
+
 function ProjectInfo({
   p,
   tab,
@@ -342,6 +440,7 @@ function ProjectInfo({
   total,
   prev,
   next,
+  delay,
   onNavigate,
 }: {
   p: ProjectItem;
@@ -351,13 +450,22 @@ function ProjectInfo({
   total: number;
   prev: ProjectItem;
   next: ProjectItem;
+  /** jeda sebelum isi panel muncul: lebih lama saat modal baru dibuka, supaya menunggu tirai turun */
+  delay: number;
   onNavigate: (i: number) => void;
 }) {
+  const url = safeUrl(p.url);
+  const repo = safeUrl(p.repo);
+  const stagger = useMemo(
+    () => ({ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: delay } } }),
+    [delay]
+  );
+
   return (
     <div className="flex min-h-0 flex-col md:h-full">
       <motion.div
         className="relative space-y-7 p-5 sm:p-7 md:flex-1 md:overflow-y-auto md:overscroll-contain"
-        variants={group}
+        variants={stagger}
         initial="hidden"
         animate="show"
       >
@@ -438,6 +546,14 @@ function ProjectInfo({
         </motion.div>
       </motion.div>
 
+      {/* tombol link: di luar area scroll supaya selalu terlihat. Masing-masing hanya muncul kalau datanya ada. */}
+      {(url || repo) && (
+        <div className="space-y-2.5 border-t border-white/10 p-4 sm:px-7">
+          {url && <VisitButton url={url} label={tab.linkLabel ?? "Kunjungi website"} theme={theme} />}
+          {repo && <RepoButton url={repo} />}
+        </div>
+      )}
+
       {/* navigasi antar proyek */}
       {total > 1 && (
         <div className="grid grid-cols-2 divide-x divide-white/10 border-t border-white/10">
@@ -473,6 +589,18 @@ function ProjectInfo({
 
 /* ───────────── Modal ───────────── */
 
+/* Transisi mobile: tirai ungu naik dari bawah, lalu panel gelap menyusul sedikit
+   di belakangnya (pola yang sama dengan menu navbar, tapi arahnya dari bawah).
+   Keluar: turun lagi ke bawah. */
+const curtainV = {
+  closed: { y: "100%", transition: { duration: 0.7, delay: 0.08, ease: EASE } },
+  open: { y: 0, transition: { duration: 0.7, ease: EASE } },
+};
+const panelV = {
+  closed: { y: "100%", transition: { duration: 0.6, ease: EASE } },
+  open: { y: 0, transition: { duration: 0.7, delay: 0.1, ease: EASE } },
+};
+
 export function ProjectModal({
   entries,
   index,
@@ -491,6 +619,13 @@ export function ProjectModal({
   const total = entries.length;
   const panelRef = useRef<HTMLDivElement>(null);
   const controls = useDragControls();
+
+  // true hanya sebentar setelah modal dibuka; pindah proyek (Sebelumnya/Berikutnya) tidak perlu menunggu tirai
+  const [intro, setIntro] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setIntro(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
 
   const isDesktop = useMemo(() => window.innerWidth >= 768, []);
   // titik awal animasi: dari posisi card yang diklik
@@ -516,8 +651,9 @@ export function ProjectModal({
     };
   }, [onClose]);
 
-  return (
-    // z-[10000]: di atas navbar (z-[9999]) supaya handle & tombol tutup di mobile tidak tertutup
+  // Portal ke <body>: lepas dari stacking context / transform milik section,
+  // jadi modal benar-benar menutupi layar sampai paling atas (termasuk navbar).
+  return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-end justify-center md:items-center md:p-6">
       <motion.div
         aria-hidden
@@ -528,49 +664,60 @@ export function ProjectModal({
         onClick={onClose}
       />
 
+      {/* tirai ungu (mobile): naik dari bawah lebih dulu dari panel */}
+      {!isDesktop && (
+        <motion.div
+          aria-hidden
+          variants={curtainV}
+          initial="closed"
+          animate="open"
+          exit="closed"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-dvh rounded-t-[2rem] bg-[#6C63FF]"
+        />
+      )}
+
       <motion.div
         ref={panelRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={`Detail proyek ${p.title}`}
-        className="relative w-full overflow-hidden rounded-t-3xl bg-[#0C0C20] outline-none ring-1 ring-white/10 md:max-w-6xl md:rounded-3xl"
-        initial={isDesktop ? { opacity: 0, x: dx, y: dy, scale: 0.45 } : { y: "100%" }}
-        animate={isDesktop ? { opacity: 1, x: 0, y: 0, scale: 1 } : { y: 0 }}
-        exit={isDesktop ? { opacity: 0, scale: 0.92, y: 20 } : { y: "100%" }}
-        transition={
-          isDesktop
-            ? { type: "spring", stiffness: 240, damping: 28 }
-            : { duration: 0.45, ease: EASE }
-        }
+        className="relative flex h-dvh w-full flex-col overflow-hidden rounded-t-[2rem] bg-[#0C0C20] outline-none md:block md:h-auto md:max-w-6xl md:rounded-3xl md:ring-1 md:ring-white/10"
+        variants={isDesktop ? undefined : panelV}
+        initial={isDesktop ? { opacity: 0, x: dx, y: dy, scale: 0.45 } : "closed"}
+        animate={isDesktop ? { opacity: 1, x: 0, y: 0, scale: 1 } : "open"}
+        exit={isDesktop ? { opacity: 0, scale: 0.92, y: 20 } : "closed"}
+        transition={isDesktop ? { type: "spring", stiffness: 240, damping: 28 } : undefined}
         drag={isDesktop ? false : "y"}
         dragControls={controls}
         dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0, bottom: 0.7 }}
         onDragEnd={(_, info) => {
+          // panel naik dari bawah, jadi ditutup dengan menariknya ke bawah
           if (info.offset.y > 110 || info.velocity.y > 600) onClose();
         }}
       >
-        {/* cahaya aksen */}
+        {/* cahaya aksen (desktop saja) */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full opacity-25 blur-3xl"
+          className="pointer-events-none absolute -right-20 -top-24 hidden h-72 w-72 rounded-full opacity-25 blur-3xl md:block"
           style={{ background: theme.hex }}
         />
 
-        {/* header mobile: handle untuk ditarik + tombol tutup */}
+        {/* header mobile: handle untuk ditarik ke bawah + tombol tutup, menghormati safe-area (notch) */}
         <div
-          className="relative z-20 flex touch-none items-center justify-center py-3 md:hidden"
+          className="relative z-20 flex shrink-0 touch-none items-center justify-between bg-[#0C0C20] px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden"
           onPointerDown={(e) => controls.start(e)}
         >
+          <span className="h-9 w-9" aria-hidden />
           <span className="h-1.5 w-12 rounded-full bg-white/25" />
           <button
             type="button"
             onClick={onClose}
             onPointerDown={(e) => e.stopPropagation()}
             aria-label="Tutup detail"
-            className="absolute right-3 top-1.5 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white"
+            className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white"
           >
             <X size={18} />
           </button>
@@ -588,7 +735,7 @@ export function ProjectModal({
           <X size={18} />
         </motion.button>
 
-        <div className="max-h-[calc(92dvh-3.25rem)] overflow-y-auto overscroll-contain md:grid md:h-[min(88dvh,660px)] md:max-h-none md:grid-cols-[1.3fr_1fr] md:overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] md:pb-0 md:grid md:h-[min(88dvh,660px)] md:flex-none md:grid-cols-[1.3fr_1fr] md:overflow-hidden">
           <div className="md:min-h-0">
             <Gallery key={p.id} p={p} theme={theme} />
           </div>
@@ -601,10 +748,12 @@ export function ProjectModal({
             total={total}
             prev={entries[(index - 1 + total) % total].p}
             next={entries[(index + 1) % total].p}
+            delay={intro ? (isDesktop ? 0.25 : 0.4) : 0.1}
             onNavigate={onNavigate}
           />
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

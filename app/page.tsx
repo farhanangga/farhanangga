@@ -1,11 +1,11 @@
-import { About } from "../components/about";
-import { BestProject } from "../components/best-project";
-import { Experience } from "../components/experience";
+import { About } from "../components/landingPage/about";
+import { BestProject } from "../components/landingPage/best-project";
+import { Experience } from "../components/landingPage/experience";
 import { sans } from "../components/fonts";
-import { Footer } from "../components/footer";
-import { Hero } from "../components/hero";
-import { Navbar } from "../components/navbar";
-import { Tools } from "../components/tools";
+import { Footer } from "../components/layout/footer";
+import { Hero } from "../components/landingPage/hero";
+import { Navbar } from "../components/layout/navbar";
+import { Tools } from "../components/landingPage/tools";
 import { MotionProvider, ScrollProgress } from "../components/ui";
 
 export default function HomePage() {

@@ -12,9 +12,9 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { dummyPhoto, profile, roles } from "../lib/data";
-import { mono } from "./fonts";
-import { EASE, Icon, Magnetic } from "./ui";
+import { dummyPhoto, profile, roles } from "../../lib/data";
+import { mono } from "../fonts";
+import { EASE, Icon, Magnetic } from "../ui";
 
 /* ------------------------------------------------------------------ */
 /* GAMBAR HERO: ubah folder di sini kalau lokasi file-nya berbeda.     */

@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Footer } from "../../components/footer";
+import { Footer } from "../../components/layout/footer";
 import { sans } from "../../components/fonts";
-import { Navbar } from "../../components/navbar";
-import { ProjectsView } from "../../components/projectView";
+import { Navbar } from "../../components/layout/navbar";
+import { ProjectsView } from "../../components/projects/projectView";
 import { MotionProvider, ScrollProgress } from "../../components/ui";
 
 export const metadata: Metadata = {

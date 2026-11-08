@@ -18,8 +18,8 @@ import {
   orgs,
   certs,
   roles,
-} from "../lib/data";
-import { mono } from "./fonts";
+} from "../../lib/data";
+import { mono } from "../fonts";
 import { CountUp, EASE, Heading, Tilt } from "@/components/ui";
 
 /* ───────────── EDIT: sesuaikan dengan data Anda ───────────── */
@@ -223,40 +223,6 @@ export function About() {
               </motion.div>
             ))}
           </div>
-        </div>
-
-        {/* ───── Bagian 2: organisasi & sertifikasi ───── */}
-        <div className="mt-24 grid gap-4 md:grid-cols-2">
-          <Reveal>
-            <Spotlight className="h-full p-6" color="242,92,92">
-              <h4 className="mb-4 flex items-center gap-2 font-semibold">
-                <Users size={18} className="text-[#F25C5C]" /> Organisasi
-              </h4>
-              <ul className="space-y-3 text-sm text-white/70">
-                {orgs.map((o) => (
-                  <li key={o} className="flex gap-3">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F25C5C]" />
-                    {o}
-                  </li>
-                ))}
-              </ul>
-            </Spotlight>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <Spotlight className="h-full p-6" color="255,200,87">
-              <h4 className="mb-4 flex items-center gap-2 font-semibold">
-                <Award size={18} className="text-[#FFC857]" /> Sertifikasi & Prestasi
-              </h4>
-              <ul className="space-y-3 text-sm text-white/70">
-                {certs.map((c) => (
-                  <li key={c} className="flex gap-3">
-                    <GraduationCap size={16} className="mt-0.5 shrink-0 text-[#FFC857]" />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </Spotlight>
-          </Reveal>
         </div>
       </div>
     </section>
