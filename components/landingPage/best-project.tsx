@@ -9,7 +9,7 @@ import { BestProjectClient } from "./best-project-client";
  */
 async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
   // const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
-  const base = (process.env.API_BASE_URL ?? "farhanangga.vercel.app").trim();
+  const base = (process.env.API_BASE_URL ?? "https://farhanangga.vercel.app").trim();
   const key = (process.env.API_SECRET_KEY ?? "").trim();
 
   try {
