@@ -19,7 +19,8 @@ export const metadata: Metadata = {
  * halaman tetap tampil memakai data langsung dari lib/data.ts.
  */
 async function fetchProjectTabs(): Promise<ProjectTab[]> {
-  const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
+  // const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
+  const base = (process.env.API_BASE_URL ?? "https://farhanangga.vercel.app/").trim();
   const key = (process.env.API_SECRET_KEY ?? "").trim();
 
   if (key) {
