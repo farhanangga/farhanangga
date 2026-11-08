@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Mail, MapPin, MessageCircle } from "lucide-react";
-import { contacts, profile } from "../../lib/data";
-import { mono } from "../fonts";
-import { EASE, Icon } from "../ui";
+import { contacts, navLinks, profile } from "@/lib/data";
+import { mono } from "@/components/fonts";
+import { EASE, Icon } from "@/components/ui";
 
 /* ───────────── Pengaturan (sesuaikan) ───────────── */
 
 // Nomor WhatsApp: pakai profile.phone jika ada di data, jika tidak pakai nilai di bawah.
 // Format wa.me: kode negara tanpa "+" dan tanpa 0 di depan (contoh 62812xxxxxxx).
-const WA_DIGITS =
-  ((profile as { phone?: string }).phone ?? "6281234567890").replace(/\D/g, "");
+const WA_DIGITS = (
+  (profile as { phone?: string }).phone ?? "6289515837340"
+).replace(/\D/g, "");
 const WA_DISPLAY = `+${WA_DIGITS.slice(0, 2)} ${WA_DIGITS.slice(2, 5)}-${WA_DIGITS.slice(
   5,
   9
@@ -20,15 +21,6 @@ const WA_DISPLAY = `+${WA_DIGITS.slice(0, 2)} ${WA_DIGITS.slice(2, 5)}-${WA_DIGI
 const WA_HREF = `https://wa.me/${WA_DIGITS}?text=${encodeURIComponent(
   "Halo Angga, saya ingin berdiskusi tentang proyek."
 )}`;
-
-// Menu navigasi: samakan dengan route di navbar Anda.
-const NAV = [
-  { label: "Home", href: "/" },
-  { label: "Apps", href: "/apps" },
-  { label: "UI/UX", href: "/ui-ux" },
-  { label: "Photography", href: "/photography" },
-  { label: "Blog", href: "/blog" },
-];
 
 /* ───────────── Komponen kecil ───────────── */
 
@@ -94,7 +86,10 @@ export function Footer() {
               ))}
             </h2>
 
-            <motion.p {...fade(0.1)} className="mt-5 max-w-md text-sm leading-relaxed text-white/60 sm:text-base">
+            <motion.p
+              {...fade(0.1)}
+              className="mt-5 max-w-md text-sm leading-relaxed text-white/60 sm:text-base"
+            >
               Punya ide website, aplikasi, atau desain antarmuka? Ceritakan kebutuhan Anda, saya
               siap membantu mewujudkannya.
             </motion.p>
@@ -125,22 +120,38 @@ export function Footer() {
 
           {/* ── Kolom 2 & 3 ── */}
           <div className="grid gap-10 sm:grid-cols-2 lg:contents">
-            {/* navigasi */}
+            {/* navigasi (dari navLinks di lib/data.ts) */}
             <motion.nav {...fade(0.1)} aria-label="Navigasi footer">
               <ColTitle>Navigasi</ColTitle>
               <ul className="space-y-1">
-                {NAV.map((n) => (
+                {navLinks.map((n) => (
                   <li key={n.href}>
-                    <Link
-                      href={n.href}
-                      className={`group flex items-center justify-between rounded-lg border-b border-white/5 py-2.5 text-white/70 transition hover:text-white ${linkFocus}`}
-                    >
-                      <span className="transition-transform group-hover:translate-x-1">{n.label}</span>
-                      <ArrowUpRight
-                        size={15}
-                        className="text-white/30 transition group-hover:text-[#FFC857]"
-                      />
-                    </Link>
+                    {n.locked ? (
+                      <span
+                        aria-disabled="true"
+                        className="flex cursor-not-allowed items-center justify-between rounded-lg border-b border-white/5 py-2.5 text-white/30"
+                      >
+                        <span>{n.label}</span>
+                        <span
+                          className={`${mono.className} rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/40`}
+                        >
+                          Segera
+                        </span>
+                      </span>
+                    ) : (
+                      <Link
+                        href={n.href}
+                        className={`group flex items-center justify-between rounded-lg border-b border-white/5 py-2.5 text-white/70 transition hover:text-white ${linkFocus}`}
+                      >
+                        <span className="transition-transform group-hover:translate-x-1">
+                          {n.label}
+                        </span>
+                        <ArrowUpRight
+                          size={15}
+                          className="text-white/30 transition group-hover:text-[#FFC857]"
+                        />
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -18,8 +18,8 @@ import {
   orgs,
   certs,
   roles,
-} from "../../lib/data";
-import { mono } from "../fonts";
+} from "@/lib/data";
+import { mono } from "@/components/fonts";
 import { CountUp, EASE, Heading, Tilt } from "@/components/ui";
 
 /* ───────────── EDIT: sesuaikan dengan data Anda ───────────── */

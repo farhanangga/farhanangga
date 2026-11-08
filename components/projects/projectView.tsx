@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "framer-motion";
 import { ArrowUpRight, Images } from "lucide-react";
-import { projectTabs, type ProjectItem, type ProjectTab } from "../../lib/data";
+import type { ProjectItem, ProjectTab } from "../../lib/data";
 import { mono } from "../fonts";
 import { ProjectModal, Shot, pad, themeOf } from "./projectModal";
 import { EASE, Tilt } from "../ui";
@@ -16,11 +16,11 @@ const ALIASES: Record<string, string[]> = {
   uiux: ["UI/UX Designer", "ui", "ux"],
   photo: ["photographer", "foto"],
 };
-function resolveTab(param: string | null): ProjectTab | null {
+function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null {
   if (!param) return null;
   const q = param.toLowerCase();
   return (
-    projectTabs.find((t) => t.id.toLowerCase() === q || (ALIASES[t.id] ?? []).includes(q)) ?? null
+    tabs.find((t) => t.id.toLowerCase() === q || (ALIASES[t.id] ?? []).includes(q)) ?? null
   );
 }
 
@@ -175,20 +175,21 @@ function ProjectCard({
 
 /* ───────────── Halaman ───────────── */
 
-export function ProjectsView() {
+/** Data tab datang dari API (/api/projects) lewat app/projects/page.tsx */
+export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const router = useRouter();
   const params = useSearchParams();
-  const active = resolveTab(params.get("role"));
+  const active = resolveTab(params.get("role"), tabs);
   const activeId = active?.id ?? null;
   const theme = themeOf(activeId);
   const copy = COPY[activeId ?? "all"] ?? COPY.all;
 
   const entries = useMemo<Entry[]>(
     () =>
-      (active ? [active] : projectTabs).flatMap((t) =>
+      (active ? [active] : tabs).flatMap((t) =>
         t.projects.map((p) => ({ p, tab: t, key: `${t.id}-${p.id}` }))
       ),
-    [active]
+    [active, tabs]
   );
 
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
@@ -203,8 +204,8 @@ export function ProjectsView() {
   );
 
   const options = [
-    { id: null as string | null, label: "Semua", short: "Semua", count: projectTabs.reduce((s, t) => s + t.projects.length, 0) },
-    ...projectTabs.map((t) => ({ id: t.id as string | null, label: t.label, short: t.short, count: t.projects.length })),
+    { id: null as string | null, label: "Semua", short: "Semua", count: tabs.reduce((s, t) => s + t.projects.length, 0) },
+    ...tabs.map((t) => ({ id: t.id as string | null, label: t.label, short: t.short, count: t.projects.length })),
   ];
 
   return (

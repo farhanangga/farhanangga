@@ -13,9 +13,9 @@ import {
 } from "react-icons/si";
 import { FaHtml5, FaCss3Alt, FaJava } from "react-icons/fa";
 import { VscVscode } from "react-icons/vsc";
-import { marqueeTools, toolGroups } from "../../lib/data";
-import { mono } from "../fonts";
-import { EASE, Heading, Tilt } from "../ui";
+import { marqueeTools, toolGroups } from "@/lib/data";
+import { mono } from "@/components/fonts";
+import { EASE, Heading, Tilt } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Brand map: logo + warna iconic. Key = nama tool (huruf kecil,      */

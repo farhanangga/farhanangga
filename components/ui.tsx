@@ -12,7 +12,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { mono } from "./fonts";
+import { mono } from "@/components/fonts";
 
 export const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
