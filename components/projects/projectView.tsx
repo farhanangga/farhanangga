@@ -26,7 +26,7 @@ function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null
 
 const COPY: Record<string, { title: string; text: string }> = {
   all: {
-    title: "Semua proyek",
+    title: "My Projects",
     text: "Kumpulan karya saya dari tiga bidang: membangun aplikasi, merancang UI/UX, dan fotografi.",
   },
   software: {

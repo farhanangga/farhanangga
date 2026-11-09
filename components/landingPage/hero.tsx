@@ -274,7 +274,7 @@ export function Hero() {
             >
               <Magnetic>
                 <Link
-                  href="/apps"
+                  href="/projects"
                   className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-[#6C63FF] px-7 py-3.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <span aria-hidden className="absolute inset-0 -translate-x-full bg-[#FFC857] transition-transform duration-500 ease-out group-hover:translate-x-0 group-active:translate-x-0" />

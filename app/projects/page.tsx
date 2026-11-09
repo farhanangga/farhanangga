@@ -1,69 +1,99 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+
 import { Footer } from "../../components/layout/footer";
 import { sans } from "../../components/fonts";
 import { Navbar } from "../../components/layout/navbar";
-import { ProjectsView } from "../../components/projects/projectView";
+import { ProjectsView } from "@/components/projects/projectView";
 import { MotionProvider, ScrollProgress } from "../../components/ui";
-import { projectTabs, type ProjectTab } from "../../lib/data";
+
+import type { ProjectTab } from "../../lib/data";
 
 export const metadata: Metadata = {
   title: "Proyek | Farhan Angga Riyanto",
-  description: "Kumpulan proyek Software Engineer, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
+  description:
+    "Kumpulan proyek Software Engineer, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
 };
 
-/**
- * Ambil semua proyek dari GET /api/projects.
- * Host dan password dibaca dari .env.local (API_BASE_URL, API_SECRET_KEY), hanya di server.
- * Kalau API belum siap (key belum diisi / 401 / server tidak terjangkau),
- * halaman tetap tampil memakai data langsung dari lib/data.ts.
- */
+// Mengambil data proyek HANYA melalui API
 async function fetchProjectTabs(): Promise<ProjectTab[]> {
-  // const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
-  const base = (process.env.API_BASE_URL ?? "https://farhanangga.vercel.app/").trim();
-  const key = (process.env.API_SECRET_KEY ?? "").trim();
+  const base = process.env.API_BASE_URL?.trim().replace(/\/+$/, "");
+  const key = process.env.API_SECRET_KEY?.trim();
 
-  if (key) {
-    try {
-      const res = await fetch(`${base}/api/projects`, {
-        headers: { "x-api-key": key },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const json = (await res.json()) as { data?: ProjectTab[] };
-        const tabs = Array.isArray(json.data)
-          ? json.data.filter((t) => Array.isArray(t?.projects))
-          : [];
-        if (tabs.length > 0) return tabs;
-      } else {
-        console.warn(`[Projects] API gagal: ${res.status}, memakai data lokal`);
-      }
-    } catch (err) {
-      console.warn("[Projects] tidak bisa menghubungi API, memakai data lokal", err);
-    }
-  } else {
-    console.warn("[Projects] API_SECRET_KEY belum diisi di .env.local, memakai data lokal");
+  // Memastikan konfigurasi tersedia
+  if (!base || !key) {
+    throw new Error("API_BASE_URL atau API_SECRET_KEY belum dikonfigurasi.");
   }
 
-  return projectTabs;
+  // Request ke API
+  const res = await fetch(`${base}/api/projects`, {
+    method: "GET",
+    headers: {
+      "x-api-key": key,
+    },
+    cache: "no-store",
+  });
+
+  // Jika API gagal
+  if (!res.ok) {
+    throw new Error(`Gagal mengambil data proyek: HTTP ${res.status}`);
+  }
+
+  // Membaca respons JSON
+  const json = (await res.json()) as {
+    success: boolean;
+    count: number;
+    data: ProjectTab[];
+  };
+
+  // Validasi respons
+  if (!json.success || !Array.isArray(json.data)) {
+    throw new Error("Format respons API tidak valid.");
+  }
+
+  // Mengembalikan data dari API
+  return json.data;
 }
 
-/** Komponen yang mengakses data (harus di dalam <Suspense>) */
+// Komponen untuk mengambil dan menampilkan data
 async function ProjectsData() {
-  const tabs = await fetchProjectTabs();
-  return <ProjectsView tabs={tabs} />;
+  try {
+    const tabs = await fetchProjectTabs();
+
+    return <ProjectsView tabs={tabs} />;
+  } catch (error) {
+    console.error("[Projects] API Error:", error);
+
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">
+        <h2 className="text-xl font-semibold text-white">
+          Gagal Memuat Proyek
+        </h2>
+
+        <p className="max-w-md text-sm text-gray-400">
+          Data proyek tidak dapat dimuat dari server.
+          Silakan coba kembali beberapa saat lagi.
+        </p>
+      </div>
+    );
+  }
 }
 
+// Halaman utama
 export default function ProjectsPage() {
   return (
     <MotionProvider>
-      <main className={`${sans.className} min-h-screen overflow-x-hidden bg-[#02020F] text-white`}>
+      <main
+        className={`${sans.className} min-h-screen overflow-x-hidden bg-[#02020F] text-white`}
+      >
         <ScrollProgress />
+
         <Navbar />
-        {/* fetch data + useSearchParams di ProjectsView wajib dibungkus Suspense */}
+
         <Suspense fallback={<div className="min-h-[70vh]" />}>
           <ProjectsData />
         </Suspense>
+
         <Footer />
       </main>
     </MotionProvider>

@@ -62,19 +62,74 @@ export type NavLink = {
 export const navLinks: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Projects", href: "/projects" },
-  { label: "Activity", href: "/activity" },
-  { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/contact" },
+  { label: "Activities", href: "/activities" },
+  { label: "Blog", href: "/blog", locked: true },
+  { label: "Contacts", href: "/contacts" },
 ];
 
 
 
 // Ganti href dengan username asli Anda
-export const contacts = [
-  { platform: "LinkedIn", href: "https://linkedin.com/in/farhan-angga-riyanto-7a29aa246/", icon: "linkedin" },
-  { platform: "GitHub", href: "https://github.com/farhanangga", icon: "github" },
-  { platform: "Instagram", href: "https://instagram.com/_frhnangga", icon: "instagram" },
+/* ═════════════════════════════════════════════════════════════
+   KONTAK
+   Ganti blok `contacts` lama di lib/data.ts dengan potongan ini.
+   Field lama (platform, href, icon) tetap ada, jadi komponen lain
+   yang sudah memakai `contacts` (misalnya footer) tidak perlu diubah.
+   ═════════════════════════════════════════════════════════════ */
+
+export type ContactIcon = "linkedin" | "github" | "instagram";
+
+export type ContactItem = {
+  platform: string;
+  href: string;
+  icon: ContactIcon;
+  /** Nama akun yang ditampilkan di card. */
+  handle: string;
+  /** Satu kalimat: untuk apa orang menghubungi lewat kanal ini. */
+  desc: string;
+};
+
+export type ContactData = {
+  email: string;
+  location: string;
+  /** Teks status ketersediaan. Kosongkan kalau tidak ingin ditampilkan. */
+  availability?: string;
+  links: ContactItem[];
+};
+
+export const contacts: ContactItem[] = [
+  {
+    platform: "LinkedIn",
+    href: "https://linkedin.com/in/farhan-angga-riyanto-7a29aa246/",
+    icon: "linkedin",
+    handle: "Farhan Angga Riyanto",
+    desc: "Untuk tawaran kerja, kolaborasi, dan koneksi profesional.",
+  },
+  {
+    platform: "GitHub",
+    href: "https://github.com/farhanangga",
+    icon: "github",
+    handle: "@farhanangga",
+    desc: "Kode dan repository proyek yang saya kerjakan.",
+  },
+  {
+    platform: "Instagram",
+    href: "https://instagram.com/_frhnangga",
+    icon: "instagram",
+    handle: "@_frhnangga",
+    desc: "Hasil fotografi dan kabar terbaru sehari-hari.",
+  },
 ];
+
+/** Dipakai route /api/contacts dan halaman /contact. */
+export function getContactData(): ContactData {
+  return {
+    email: profile.email,
+    location: profile.location,
+    availability: "Terbuka untuk proyek freelance dan kolaborasi.", // TODO: sesuaikan, atau hapus
+    links: contacts,
+  };
+}
 
 /* ═════════════════════════════════════════════════════════════
    PROYEK
@@ -534,3 +589,109 @@ export const toolGroups = [
   { title: "Tools & Deployment", items: ["Git", "GitHub", "Vercel", "VS Code"] },
 ];
 export const marqueeTools = toolGroups.flatMap((g) => g.items);
+
+/* ═════════════════════════════════════════════════════════════
+   KEGIATAN / KEPANITIAAN  (tempel di lib/data.ts)
+   Dua "tabel" (nanti tinggal dipindah ke database):
+     1. activities         -> detail kegiatan
+     2. gambarActivities   -> gambar tiap kegiatan (maks 10 per kegiatan)
+
+   Letak file gambar: public/assets/activities/<id-kegiatan>/<nama-file>
+   `lokasiFile` = folder di dalam public, `namaFile` = nama file.
+   Kegiatan tanpa gambar tetap tampil dengan placeholder.
+   ═════════════════════════════════════════════════════════════ */
+
+export const MAX_PICTURES_PER_ACTIVITY = 10;
+
+/** Tabel 1: activities */
+export type Activity = {
+  id: string;
+  namaKegiatan: string;
+  /** Opsional: kalau kosong, kegiatan hanya muncul di filter "Semua". */
+  tahun?: number;
+  role: string;
+  /** Daftar tanggung jawab (satu poin per item). */
+  jobdesc: string[];
+  deskripsi: string;
+};
+
+/** Tabel 2: gambarActivities */
+export type GambarActivity = {
+  idGambar: string;
+  idKegiatan: string;
+  namaFile: string;
+  /** Urutan tampil, mulai dari 1. Urutan 1 dipakai sebagai cover. */
+  urutan: number;
+  /** Folder file di dalam public, contoh "/assets/activities/mumas-rpl-2022". */
+  lokasiFile: string;
+};
+
+export type ActivityItem = Activity & { images: string[] };
+
+/* TODO: jobdesc & deskripsi di bawah adalah teks umum berdasarkan peran. Ganti dengan yang sebenarnya. */
+const JD = {
+  operator: ["Mengoperasikan perangkat presentasi dan tata suara selama acara", "Memastikan materi tampil sesuai rundown", "Berkoordinasi dengan divisi acara"],
+  kadivOperator: ["Memimpin dan membagi tugas anggota divisi operator", "Menyiapkan dan mengecek perangkat sebelum acara", "Berkoordinasi dengan ketua pelaksana dan divisi acara"],
+  pdd: ["Mendokumentasikan acara dalam bentuk foto dan video", "Membuat dan menyebarkan materi publikasi", "Menyunting hasil dokumentasi"],
+  desain: ["Membuat desain publikasi dan materi visual acara", "Menyesuaikan desain dengan identitas kegiatan"],
+  acara: ["Menyusun rundown dan alur acara", "Memimpin divisi acara dan berkoordinasi dengan pengisi acara"],
+  logistik: ["Mendata dan menyiapkan kebutuhan peralatan acara", "Mengatur distribusi dan pengembalian perlengkapan"],
+  musik: ["Mengelola penampil dan kebutuhan musik pertunjukan", "Berkoordinasi dengan sutradara dan divisi lain"],
+  pengawas: ["Mengawasi jalannya kegiatan di lapangan", "Memastikan peserta dan panitia mengikuti aturan acara"],
+};
+const DESC = "Deskripsi singkat kegiatan."; // TODO: tulis deskripsi tiap kegiatan
+
+/* ───────────── Tabel 1: activities ───────────── */
+
+export const activities: Activity[] = [
+  { id: "mumas-rpl-2022", namaKegiatan: "Mumas RPL", tahun: 2022, role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "legislatif-class-2023", namaKegiatan: "Legislatif Class", tahun: 2023, role: "Kepala Divisi Operator", jobdesc: JD.kadivOperator, deskripsi: DESC },
+  { id: "mabim-rpl-2023", namaKegiatan: "Mabim RPL", tahun: 2023, role: "Publikasi dan Dokumentasi", jobdesc: JD.pdd, deskripsi: DESC },
+  { id: "mokaku-upi-cibiru-2023", namaKegiatan: "Mokaku UPI Cibiru", tahun: 2023, role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "legislatif-fair-2023", namaKegiatan: "Legislatif Fair", tahun: 2023, role: "Staf Desain Grafis", jobdesc: JD.desain, deskripsi: DESC },
+  { id: "mumas-rpl-2023", namaKegiatan: "Mumas RPL", tahun: 2023, role: "Kepala Divisi Publikasi, Dokumentasi & Operator", jobdesc: [...JD.pdd.slice(0, 2), ...JD.kadivOperator.slice(0, 1)], deskripsi: DESC },
+  { id: "mabim-rpl-2024", namaKegiatan: "Mabim RPL", tahun: 2024, role: "Kepala Divisi Operator", jobdesc: JD.kadivOperator, deskripsi: DESC },
+  { id: "pendidikan-akhir-dapus-2024", namaKegiatan: "Pendidikan Akhir DAPUS", tahun: 2024, role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "legislatif-fair-2024", namaKegiatan: "Legislatif Fair", tahun: 2024, role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "odwh-2024", namaKegiatan: "ODWH", tahun: 2024, role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "mimbar-aspirasi-2024", namaKegiatan: "Mimbar Aspirasi", tahun: 2024, role: "Kepala Divisi Acara", jobdesc: JD.acara, deskripsi: DESC },
+  { id: "diesnatalis-hima-2024", namaKegiatan: "Diesnatalis HIMA", tahun: 2024, role: "Kepala Divisi Logistik", jobdesc: JD.logistik, deskripsi: DESC },
+  { id: "ekspedisi-biru-2024", namaKegiatan: "Ekspedisi Biru", tahun: 2024, role: "Pengawas", jobdesc: JD.pengawas, deskripsi: DESC },
+  { id: "pagelaran-dapus-2025", namaKegiatan: "Pagelaran DAPUS", tahun: 2025, role: "Asisten Sutradara & Penata Musik", jobdesc: JD.musik, deskripsi: DESC },
+  { id: "pemira-2025", namaKegiatan: "Pemira", tahun: 2025, role: "Publikasi dan Dokumentasi", jobdesc: JD.pdd, deskripsi: DESC },
+  { id: "pagelaran-dapus-2026", namaKegiatan: "Pagelaran DAPUS", tahun: 2026, role: "PJ Divisi Musik", jobdesc: JD.musik, deskripsi: DESC },
+  // TODO: tambahkan tahun jika diketahui
+  { id: "mumas-rema-upi-cibiru", namaKegiatan: "Mumas REMA UPI Cibiru", role: "Operator", jobdesc: JD.operator, deskripsi: DESC },
+  { id: "kou", namaKegiatan: "K.O.U", role: "Staf Logistik", jobdesc: JD.logistik, deskripsi: DESC },
+];
+
+/* ───────────── Tabel 2: gambarActivities ─────────────
+ * Maksimal 10 gambar per kegiatan (kelebihan otomatis diabaikan).
+ * Contoh di bawah, salin polanya untuk kegiatan lain.
+ */
+
+export const gambarActivities: GambarActivity[] = [
+  { idGambar: "act-001", idKegiatan: "mumas-rpl-2022", namaFile: "mumas-rpl-2022-1.png", urutan: 1, lokasiFile: "/assets/activities/mumas-rpl-2022" }, // TODO: sesuaikan nama file
+  { idGambar: "act-002", idKegiatan: "mumas-rpl-2022", namaFile: "mumas-rpl-2022-2.png", urutan: 2, lokasiFile: "/assets/activities/mumas-rpl-2022" },
+  { idGambar: "act-003", idKegiatan: "legislatif-class-2023", namaFile: "legislatif-class-2023-1.png", urutan: 1, lokasiFile: "/assets/activities/legislatif-class-2023" },
+];
+
+/* ───────────── Query helper (dipakai route.ts) ───────────── */
+
+/** Path lengkap gambar = lokasiFile + namaFile. */
+const pictureSrc = (g: GambarActivity) => `${g.lokasiFile.replace(/\/$/, "")}/${g.namaFile}`;
+
+/** Gambar satu kegiatan, terurut, maksimal 10. */
+export function getActivityPictures(idKegiatan: string): GambarActivity[] {
+  return gambarActivities
+    .filter((g) => g.idKegiatan === idKegiatan)
+    .sort((a, b) => a.urutan - b.urutan)
+    .slice(0, MAX_PICTURES_PER_ACTIVITY);
+}
+
+/** Semua kegiatan + gambarnya, terbaru dulu (tanpa tahun di paling bawah). */
+export function getActivities(): ActivityItem[] {
+  return activities
+    .map((a) => ({ ...a, images: getActivityPictures(a.id).map(pictureSrc) }))
+    .sort((a, b) => (b.tahun ?? 0) - (a.tahun ?? 0));
+}

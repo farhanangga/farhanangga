@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { motion, MotionConfig, type Variants } from "framer-motion";
+import { Lock } from "lucide-react";
 import { contacts, navLinks } from "../../lib/data";
 import { mono } from "../fonts";
 import { EASE, Icon } from "../ui";
@@ -127,8 +128,13 @@ function NavbarInner() {
                     aria-disabled={l.locked}
                     aria-current={!l.locked && isActive(l.href) ? "page" : undefined}
                     title={l.locked ? "Halaman ini belum tersedia" : undefined}
+                    onClick={(e) => {
+                      if (l.locked) e.preventDefault(); // jangan lompat ke atas halaman
+                    }}
                     onMouseEnter={() => setHovered(l.label)}
-                    className={`relative flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF] ${l.locked ? "cursor-not-allowed text-white/40" : "text-white"}`}
+                    className={`relative flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF] ${
+                      l.locked ? "cursor-not-allowed text-white/40" : "text-white"
+                    }`}
                   >
                     {showPill && (
                       <motion.span
@@ -138,7 +144,7 @@ function NavbarInner() {
                       />
                     )}
                     <span className="relative z-10">{l.label}</span>
-                    {l.locked && <Icon name="lock" className="relative z-10 h-3.5 w-3.5" />}
+                    {l.locked && <Lock className="relative z-10 h-3.5 w-3.5" aria-hidden />}
                   </Link>
                 </motion.div>
               );
@@ -242,7 +248,7 @@ function NavbarInner() {
 
                   {l.locked ? (
                     <span className={`${mono.className} flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-white/40`}>
-                      <Icon name="lock" className="h-3 w-3" />
+                      <Lock className="h-3 w-3" aria-hidden />
                       Segera
                     </span>
                   ) : active ? (
