@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import type { ActivityItem } from "@/lib/data";
+import { getActivities } from "@/lib/data";
 import { ActivitiesClient } from "@/components/activities/clientActivities";
 // TODO: sesuaikan path & nama export dengan file navbar/footer Anda
 import { Navbar } from "@/components/layout/navbar";
@@ -11,22 +12,14 @@ export const metadata: Metadata = {
   description: "Kepanitiaan dan kegiatan organisasi yang pernah diikuti Farhan Angga Riyanto.",
 };
 
-/**
- * Satu-satunya sumber data: GET /api/activities (app/api/activities/route.ts).
- */
-async function fetchActivities(): Promise<ActivityItem[] | null> {
-  const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
+// Data selalu fresh, setara dengan cache: "no-store" sebelumnya
+export const dynamic = "force-dynamic";
 
+async function fetchActivities(): Promise<ActivityItem[] | null> {
   try {
-    const res = await fetch(`${base}/api/activities`, { cache: "no-store" });
-    if (!res.ok) {
-      console.error(`[Activities] API gagal: ${res.status} (${base}/api/activities)`);
-      return null;
-    }
-    const json = (await res.json()) as { data?: ActivityItem[] };
-    return Array.isArray(json.data) ? json.data : null;
+    return await getActivities();
   } catch (err) {
-    console.error("[Activities] tidak bisa menghubungi API", err);
+    console.error("[Activities] gagal memuat data", err);
     return null;
   }
 }

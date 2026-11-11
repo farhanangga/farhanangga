@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import type { ContactData } from "@/lib/data";
+import { getContact } from "@/lib/data";
 import { ContactClient } from "@/components/contacts/clientContacts";
 // TODO: sesuaikan path & nama export dengan file navbar/footer Anda di components/layout
 import { Navbar } from "@/components/layout/navbar";
@@ -11,22 +12,15 @@ export const metadata: Metadata = {
   description: "Hubungi Farhan Angga Riyanto untuk proyek, kolaborasi, atau sekadar menyapa.",
 };
 
-/**
- * Satu-satunya sumber data: GET /api/contacts (app/api/contacts/route.ts).
- */
-async function fetchContact(): Promise<ContactData | null> {
-  const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
+// Data selalu fresh, setara dengan cache: "no-store" sebelumnya
+export const dynamic = "force-dynamic";
 
+async function fetchContact(): Promise<ContactData | null> {
   try {
-    const res = await fetch(`${base}/api/contacts`, { cache: "no-store" });
-    if (!res.ok) {
-      console.error(`[Contact] API gagal: ${res.status} (${base}/api/contacts)`);
-      return null;
-    }
-    const json = (await res.json()) as { data?: ContactData };
-    return json.data && Array.isArray(json.data.links) ? json.data : null;
+    const data = await getContact();
+    return data && Array.isArray(data.links) ? data : null;
   } catch (err) {
-    console.error("[Contact] tidak bisa menghubungi API", err);
+    console.error("[Contact] gagal memuat data", err);
     return null;
   }
 }
