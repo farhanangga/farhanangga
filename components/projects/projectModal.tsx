@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -77,22 +77,29 @@ function safeUrl(url?: string) {
 
 /* ───────────── Gambar + fallback ───────────── */
 
-export function Shot({
+function ShotImage({
   src,
   alt,
   sizes,
   priority,
   theme,
+  fit = "cover",
+  quality,
 }: {
   src: string;
   alt: string;
   sizes: string;
   priority?: boolean;
   theme: Theme;
+  /** "cover" memenuhi container (terpotong); "contain" menampilkan seluruh gambar sesuai rasio aslinya */
+  fit?: "cover" | "contain";
+  /** kualitas kompresi 1–100 (bawaan Next.js: 75) */
+  quality?: number;
 }) {
-  const [failed, setFailed] = useState(false);
+  // 0 = lewat optimizer Next.js, 1 = file asli apa adanya, 2 = placeholder
+  const [level, setLevel] = useState<0 | 1 | 2>(0);
 
-  if (failed || !src) {
+  if (level === 2 || !src) {
     return (
       <div
         className="absolute inset-0 overflow-hidden"
@@ -121,12 +128,19 @@ export function Shot({
       alt={alt}
       fill
       sizes={sizes}
+      quality={quality}
       priority={priority}
+      unoptimized={level === 1}
       draggable={false}
-      onError={() => setFailed(true)}
-      className="select-none object-cover"
+      onError={() => setLevel((l) => (l === 0 ? 1 : 2))}
+      className={`select-none ${fit === "contain" ? "object-contain" : "object-cover"}`}
     />
   );
+}
+
+/** Gambar dengan fallback bertahap. `key={src}` mengulang dari awal saat gambarnya berganti. */
+export function Shot(props: ComponentProps<typeof ShotImage>) {
+  return <ShotImage key={props.src} {...props} />;
 }
 
 /* ───────────── Galeri (gaya stories) ───────────── */
@@ -197,21 +211,18 @@ function Gallery({ p, theme }: { p: ProjectItem; theme: Theme }) {
             }}
             className={`absolute inset-0 ${many ? "cursor-grab active:cursor-grabbing" : ""}`}
           >
-            {/* Ken Burns: zoom pelan */}
-            <motion.div
-              className="absolute inset-0"
-              initial={{ scale: 1 }}
-              animate={{ scale: 1.08 }}
-              transition={{ duration: 8, ease: "linear" }}
-            >
+            {/* gambar utama: ditampilkan utuh sesuai rasio aslinya (bisa ada ruang kosong), resolusi tinggi */}
+            <div className="absolute inset-0">
               <Shot
                 src={p.images[index] ?? ""}
                 alt={`${p.title}, gambar ${index + 1} dari ${total}`}
-                sizes="(min-width:768px) 700px, 100vw"
+                sizes="(min-width:768px) 1400px, 100vw"
+                quality={95}
+                fit="contain"
                 priority={index === 0}
                 theme={theme}
               />
-            </motion.div>
+            </div>
           </motion.div>
         </AnimatePresence>
 

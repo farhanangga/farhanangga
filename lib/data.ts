@@ -392,8 +392,7 @@ export type ProjectTab = {
   linkLabel?: string;
   projects: ProjectItem[];
 };
-
-const tabMeta: Omit<ProjectTab, "projects">[] = [
+export const tabMeta: Omit<ProjectTab, "projects">[] = [
   { id: "software", label: "Software Engineer", short: "Software", typeLabel: "Jenis aplikasi", toolsLabel: "Tools", linkLabel: "Kunjungi website" },
   { id: "uiux", label: "UI/UX Design", short: "UI/UX", typeLabel: "Jenis desain", toolsLabel: "Tools", linkLabel: "Lihat prototype" },
   { id: "photo", label: "Photographer", short: "Foto", typeLabel: "Kategori foto", toolsLabel: "Peralatan", linkLabel: "Lihat album lengkap" },

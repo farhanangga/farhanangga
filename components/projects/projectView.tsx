@@ -1,27 +1,27 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "framer-motion";
 import { ArrowUpRight, Images } from "lucide-react";
-import type { ProjectItem, ProjectTab } from "../../lib/data";
+import type { ProjectItem, ProjectTab } from "@/lib/data";
 import { mono } from "../fonts";
 import { ProjectModal, Shot, pad, themeOf } from "./projectModal";
 import { EASE, Tilt } from "../ui";
 
 /* ───────────── Konfigurasi ───────────── */
 
+// nama lain yang diterima di URL: /projects?role=...
 const ALIASES: Record<string, string[]> = {
   software: ["Software Engineer", "app", "web"],
   uiux: ["UI/UX Designer", "ui", "ux"],
   photo: ["photographer", "foto"],
 };
+
 function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null {
   if (!param) return null;
   const q = param.toLowerCase();
-  return (
-    tabs.find((t) => t.id.toLowerCase() === q || (ALIASES[t.id] ?? []).includes(q)) ?? null
-  );
+  return tabs.find((t) => t.id.toLowerCase() === q || (ALIASES[t.id] ?? []).includes(q)) ?? null;
 }
 
 const COPY: Record<string, { title: string; text: string }> = {
@@ -44,6 +44,7 @@ const COPY: Record<string, { title: string; text: string }> = {
 };
 
 type Entry = { p: ProjectItem; tab: ProjectTab; key: string };
+type Option = { id: string | null; label: string; short: string; count: number };
 
 /* ───────────── Card ───────────── */
 
@@ -66,8 +67,9 @@ function ProjectCard({
 }) {
   const { p, tab } = entry;
   const th = themeOf(tab.id);
-  const extra = p.tools.length - 3;
+  const extraTools = p.tools.length - 3;
 
+  // satu-satunya varian yang bergantung pada tema
   const arrowV: Variants = {
     rest: { backgroundColor: "rgba(255,255,255,0.08)", color: "#FFFFFF", scale: 1 },
     hover: {
@@ -153,15 +155,12 @@ function ProjectCard({
                     {t}
                   </span>
                 ))}
-                {extra > 0 && <span className="px-1 py-1 text-xs text-white/40">+{extra}</span>}
+                {extraTools > 0 && <span className="px-1 py-1 text-xs text-white/40">+{extraTools}</span>}
               </span>
 
               <span className="mt-auto flex items-center justify-between border-t border-white/10 pt-4 text-sm">
                 <span className="text-white/60">Lihat detail</span>
-                <motion.span
-                  variants={arrowV}
-                  className="grid h-9 w-9 place-items-center rounded-full"
-                >
+                <motion.span variants={arrowV} className="grid h-9 w-9 place-items-center rounded-full">
                   <ArrowUpRight size={17} />
                 </motion.span>
               </span>
@@ -175,10 +174,12 @@ function ProjectCard({
 
 /* ───────────── Halaman ───────────── */
 
-/** Data tab datang dari API (/api/projects) lewat app/projects/page.tsx */
+/** Data tab dikirim dari server component (app/projects/page.tsx). Filter bidang lewat ?role=... */
 export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const router = useRouter();
   const params = useSearchParams();
+  const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
+
   const active = resolveTab(params.get("role"), tabs);
   const activeId = active?.id ?? null;
   const theme = themeOf(activeId);
@@ -192,21 +193,20 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
     [active, tabs]
   );
 
-  const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
-  const close = useCallback(() => setSel(null), []);
-
-  const setRole = useCallback(
-    (id: string | null) => {
-      setSel(null);
-      router.replace(id ? `/projects?role=${id}` : "/projects", { scroll: false });
+  const options: Option[] = [
+    {
+      id: null,
+      label: "Semua",
+      short: "Semua",
+      count: tabs.reduce((sum, t) => sum + t.projects.length, 0),
     },
-    [router]
-  );
-
-  const options = [
-    { id: null as string | null, label: "Semua", short: "Semua", count: tabs.reduce((s, t) => s + t.projects.length, 0) },
-    ...tabs.map((t) => ({ id: t.id as string | null, label: t.label, short: t.short, count: t.projects.length })),
+    ...tabs.map((t) => ({ id: t.id, label: t.label, short: t.short, count: t.projects.length })),
   ];
+
+  function setRole(id: string | null) {
+    setSel(null);
+    router.replace(id ? `/projects?role=${id}` : "/projects", { scroll: false });
+  }
 
   return (
     <MotionConfig reducedMotion="user">
@@ -257,13 +257,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
 
           <div className="relative mt-3 min-h-[8.5rem] sm:min-h-[11rem]">
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeId ?? "all"}
-                exit={{ opacity: 0, y: -12, transition: { duration: 0.18 } }}
-              >
-                <h1
-                  className={`${mono.className} overflow-hidden pb-2 text-4xl font-bold leading-[1.05] sm:text-6xl`}
-                >
+              <motion.div key={activeId ?? "all"} exit={{ opacity: 0, y: -12, transition: { duration: 0.18 } }}>
+                <h1 className={`${mono.className} overflow-hidden pb-2 text-4xl font-bold leading-[1.05] sm:text-6xl`}>
                   <motion.span
                     className="block"
                     initial={{ y: "115%" }}
@@ -325,9 +320,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                     <th.Icon size={15} className="hidden min-[400px]:block" />
                     <span className="sm:hidden">{o.short}</span>
                     <span className="hidden sm:inline">{o.label}</span>
-                    <span className={`${mono.className} hidden text-[11px] opacity-60 sm:inline`}>
-                      {o.count}
-                    </span>
+                    <span className={`${mono.className} hidden text-[11px] opacity-60 sm:inline`}>{o.count}</span>
                   </button>
                 );
               })}
@@ -372,7 +365,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
               index={sel.index}
               origin={sel.rect}
               onNavigate={(i) => setSel((cur) => (cur ? { ...cur, index: i } : cur))}
-              onClose={close}
+              onClose={() => setSel(null)}
             />
           )}
         </AnimatePresence>

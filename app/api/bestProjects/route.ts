@@ -1,44 +1,69 @@
-import { timingSafeEqual } from "node:crypto";
-import { NextResponse, type NextRequest } from "next/server";
-import { BEST_PROJECT_LIMIT, getBestProjectTabs } from "@/lib/data";
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import type { ProjectCategory, ProjectItem, ProjectTab } from "@/lib/data";
 
-/** Bandingkan API key tanpa bocor lewat perbedaan waktu. */
-function isAuthorized(req: NextRequest) {
-  const secret = process.env.API_SECRET_KEY?.trim();
-  if (!secret) return false; // env belum diisi -> tolak semua
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { auth: { persistSession: false } }
+);
 
-  const given = (
-    req.headers.get("x-api-key") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-    ""
-  ).trim();
+// GET /api/bestProjects
+export async function GET() {
+  const [bestRes, tabsRes, projectsRes, imagesRes] = await Promise.all([
+    supabase.from("best_projects").select("project_id").order("position"),
+    supabase.from("project_tabs").select("*").order("sort_order"),
+    supabase.from("projects").select("*"),
+    supabase.from("project_images").select("project_id, src").order("position"),
+  ]);
 
-  const a = Buffer.from(given);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-/**
- * GET /api/bestProjects
- * Header: x-api-key: <API_SECRET_KEY>   (atau Authorization: Bearer <API_SECRET_KEY>)
- * Opsional: ?limit=6 (maks proyek per tab, maks 6)
- *
- * Respons: { count, data: ProjectTab[] }
- * Alur: bestProject (order + idProject) -> projects (detail) -> gambarProject (maks 10 gambar)
- */
-export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const error = bestRes.error ?? tabsRes.error ?? projectsRes.error ?? imagesRes.error;
+  if (error) {
+    console.error("[API /bestProjects]", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const raw = Number(req.nextUrl.searchParams.get("limit"));
-  const limit =
-    Number.isInteger(raw) && raw > 0 ? Math.min(raw, BEST_PROJECT_LIMIT) : BEST_PROJECT_LIMIT;
+  const images = new Map<string, string[]>();
+  for (const img of imagesRes.data ?? []) {
+    images.set(img.project_id, [...(images.get(img.project_id) ?? []), img.src]);
+  }
 
-  const data = getBestProjectTabs(limit);
+  const projects = new Map<string, ProjectItem>(
+    (projectsRes.data ?? []).map((r) => [
+      r.id,
+      {
+        id: r.id,
+        category: r.category as ProjectCategory,
+        title: r.title,
+        type: r.type,
+        role: r.role,
+        tools: r.tools ?? [],
+        desc: r.desc,
+        highlights: r.highlights ?? [],
+        url: r.url ?? undefined,
+        repo: r.repo ?? undefined,
+        images: images.get(r.id) ?? [],
+      },
+    ])
+  );
+
+  // urutan mengikuti best_projects.position
+  const best = (bestRes.data ?? []).flatMap((b) => projects.get(b.project_id) ?? []);
+
+  const data: ProjectTab[] = (tabsRes.data ?? [])
+    .map((t) => ({
+      id: t.id as ProjectCategory,
+      label: t.label,
+      short: t.short,
+      typeLabel: t.type_label,
+      toolsLabel: t.tools_label,
+      linkLabel: t.link_label ?? undefined,
+      projects: best.filter((p) => p.category === t.id),
+    }))
+    .filter((t) => t.projects.length > 0);
 
   return NextResponse.json(
-    { count: data.reduce((n, t) => n + t.projects.length, 0), data },
+    { count: best.length, data },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

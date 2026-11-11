@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -11,7 +11,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { ArrowRight, Images } from "lucide-react";
-import type { ProjectItem, ProjectTab } from "../../lib/data";
+import type { ProjectItem, ProjectTab } from "@/lib/data";
 import { mono } from "../fonts";
 import { EASE, Heading } from "../ui";
 import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/projects/projectModal";
@@ -21,7 +21,7 @@ import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/proje
 // pola lebar card di layar besar (berulang tiap 6 item): 2+1 / 1+2 / 2+1
 const SPANS = ["lg:col-span-2", "", "", "lg:col-span-2", "lg:col-span-2", ""];
 
-/* ───────────── Card ───────────── */
+/* ───────────── Animasi (tidak bergantung pada data) ───────────── */
 
 const cardV = {
   hidden: { opacity: 0, y: 36, filter: "blur(10px)" },
@@ -32,6 +32,23 @@ const cardV = {
     transition: { duration: 0.7, ease: EASE },
   },
 };
+
+const imgV = {
+  rest: { scale: 1 },
+  hover: { scale: 1.08, transition: { duration: 0.8, ease: EASE } },
+};
+
+const shineV = {
+  rest: { x: "-160%", transition: { duration: 0 } },
+  hover: { x: "460%", transition: { duration: 0.9, ease: EASE } },
+};
+
+const titleV = {
+  rest: { y: 0 },
+  hover: { y: -4, transition: { duration: 0.4, ease: EASE } },
+};
+
+/* ───────────── Card ───────────── */
 
 function ProjectCard({
   p,
@@ -47,6 +64,7 @@ function ProjectCard({
   onOpen: (rect: DOMRect) => void;
 }) {
   const big = spanClass !== "";
+  const extraTools = p.tools.length - 3;
 
   // posisi kursor 0..1, dipakai untuk tilt, parallax, dan cahaya
   const mx = useMotionValue(0.5);
@@ -61,20 +79,7 @@ function ProjectCard({
   const borderGlow = useMotionTemplate`radial-gradient(240px circle at ${gx} ${gy}, rgba(${theme.rgb},1), transparent 70%)`;
   const innerGlow = useMotionTemplate`radial-gradient(380px circle at ${gx} ${gy}, rgba(${theme.rgb},0.22), transparent 65%)`;
 
-  const extra = p.tools.length - 3;
-
-  const imgV = {
-    rest: { scale: 1 },
-    hover: { scale: 1.08, transition: { duration: 0.8, ease: EASE } },
-  };
-  const shineV = {
-    rest: { x: "-160%", transition: { duration: 0 } },
-    hover: { x: "460%", transition: { duration: 0.9, ease: EASE } },
-  };
-  const titleV = {
-    rest: { y: 0 },
-    hover: { y: -4, transition: { duration: 0.4, ease: EASE } },
-  };
+  // satu-satunya varian yang bergantung pada tema
   const arrowV = {
     rest: { rotate: 0, backgroundColor: "rgba(255,255,255,0.08)", color: "#FFFFFF" },
     hover: {
@@ -124,11 +129,7 @@ function ProjectCard({
 
             <span className="relative block h-full overflow-hidden rounded-[15px] bg-[#0C0C20]">
               {/* gambar dengan parallax */}
-              <motion.span
-                variants={imgV}
-                style={{ x: px, y: py }}
-                className="absolute -inset-5 block"
-              >
+              <motion.span variants={imgV} style={{ x: px, y: py }} className="absolute -inset-5 block">
                 <Shot
                   src={p.images[0] ?? ""}
                   alt={`Sampul proyek ${p.title}`}
@@ -177,9 +178,7 @@ function ProjectCard({
 
                 <motion.span
                   variants={titleV}
-                  className={`mt-2 block text-2xl font-semibold leading-tight ${
-                    big ? "lg:text-3xl" : ""
-                  }`}
+                  className={`mt-2 block text-2xl font-semibold leading-tight ${big ? "lg:text-3xl" : ""}`}
                 >
                   {p.title}
                 </motion.span>
@@ -198,9 +197,9 @@ function ProjectCard({
                         {t}
                       </span>
                     ))}
-                    {extra > 0 && (
+                    {extraTools > 0 && (
                       <span className={`${mono.className} px-1 py-1 text-[11px] text-white/40`}>
-                        +{extra}
+                        +{extraTools}
                       </span>
                     )}
                   </span>
@@ -222,18 +221,17 @@ function ProjectCard({
 
 /* ───────────── Section ───────────── */
 
-/** Data tab datang dari API (/api/bestProjects) lewat server component best-project.tsx */
+/** Data tab dikirim dari server component (best-project.tsx), yang membacanya dari Supabase. */
 export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
-  const [tabId, setTabId] = useState<string>(tabs[0].id);
+  const [tabId, setTabId] = useState(tabs[0].id);
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
+
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
   const theme = themeOf(tab.id);
-  const totalProjects = tabs.reduce((s, t) => s + t.projects.length, 0);
+  const totalProjects = tabs.reduce((sum, t) => sum + t.projects.length, 0);
 
   // modal bersama menerima daftar { p, tab }
   const entries = useMemo(() => tab.projects.map((p) => ({ p, tab })), [tab]);
-
-  const closeModal = useCallback(() => setSel(null), []);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -272,9 +270,8 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
         />
 
         <div className="relative mx-auto max-w-[1200px] px-5 pb-24 sm:px-10 sm:pb-28">
-          <Heading sub="Pilih bidang, lalu klik proyek untuk melihat detailnya">
-            Proyek terbaik
-          </Heading>
+          <Heading sub="Pilih bidang, lalu klik proyek untuk melihat detailnya">Proyek terbaik</Heading>
+
           {/* tab role */}
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div
@@ -356,7 +353,7 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
               index={sel.index}
               origin={sel.rect}
               onNavigate={(i) => setSel((s) => (s ? { ...s, index: i } : s))}
-              onClose={closeModal}
+              onClose={() => setSel(null)}
             />
           )}
         </AnimatePresence>

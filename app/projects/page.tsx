@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { createClient } from "@supabase/supabase-js";
 
 import { Footer } from "../../components/layout/footer";
 import { sans } from "../../components/fonts";
@@ -7,7 +8,7 @@ import { Navbar } from "../../components/layout/navbar";
 import { ProjectsView } from "@/components/projects/projectView";
 import { MotionProvider, ScrollProgress } from "../../components/ui";
 
-import type { ProjectTab } from "../../lib/data";
+import type { ProjectCategory, ProjectItem, ProjectTab } from "../../lib/data";
 
 export const metadata: Metadata = {
   title: "Proyek | Farhan Angga Riyanto",
@@ -15,44 +16,52 @@ export const metadata: Metadata = {
     "Kumpulan proyek Software Engineer, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
 };
 
-// Mengambil data proyek HANYA melalui API
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { auth: { persistSession: false } }
+);
+
+// Membaca proyek langsung dari Supabase, dikelompokkan per tab
 async function fetchProjectTabs(): Promise<ProjectTab[]> {
-  const base = process.env.API_BASE_URL?.trim().replace(/\/+$/, "");
-  const key = process.env.API_SECRET_KEY?.trim();
+  const [tabsRes, projectsRes, imagesRes] = await Promise.all([
+    supabase.from("project_tabs").select("*").order("sort_order"),
+    supabase.from("projects").select("*").order("position"),
+    supabase.from("project_images").select("project_id, src").order("position"),
+  ]);
 
-  // Memastikan konfigurasi tersedia
-  if (!base || !key) {
-    throw new Error("API_BASE_URL atau API_SECRET_KEY belum dikonfigurasi.");
+  const error = tabsRes.error ?? projectsRes.error ?? imagesRes.error;
+  if (error) throw new Error(`Gagal membaca data proyek: ${error.message}`);
+
+  const images = new Map<string, string[]>();
+  for (const img of imagesRes.data ?? []) {
+    images.set(img.project_id, [...(images.get(img.project_id) ?? []), img.src]);
   }
 
-  // Request ke API
-  const res = await fetch(`${base}/api/projects`, {
-    method: "GET",
-    headers: {
-      "x-api-key": key,
-    },
-    cache: "no-store",
-  });
+  const projects: ProjectItem[] = (projectsRes.data ?? []).map((r) => ({
+    id: r.id,
+    category: r.category as ProjectCategory,
+    title: r.title,
+    type: r.type,
+    role: r.role,
+    tools: r.tools ?? [],
+    desc: r.desc,
+    highlights: r.highlights ?? [],
+    url: r.url ?? undefined,
+    repo: r.repo ?? undefined,
+    images: images.get(r.id) ?? [],
+  }));
 
-  // Jika API gagal
-  if (!res.ok) {
-    throw new Error(`Gagal mengambil data proyek: HTTP ${res.status}`);
-  }
-
-  // Membaca respons JSON
-  const json = (await res.json()) as {
-    success: boolean;
-    count: number;
-    data: ProjectTab[];
-  };
-
-  // Validasi respons
-  if (!json.success || !Array.isArray(json.data)) {
-    throw new Error("Format respons API tidak valid.");
-  }
-
-  // Mengembalikan data dari API
-  return json.data;
+  return (tabsRes.data ?? []).map((t) => ({
+    id: t.id as ProjectCategory,
+    label: t.label,
+    short: t.short,
+    typeLabel: t.type_label,
+    toolsLabel: t.tools_label,
+    linkLabel: t.link_label ?? undefined,
+    projects: projects.filter((p) => p.category === t.id),
+  }));
 }
 
 // Komponen untuk mengambil dan menampilkan data
@@ -62,7 +71,7 @@ async function ProjectsData() {
 
     return <ProjectsView tabs={tabs} />;
   } catch (error) {
-    console.error("[Projects] API Error:", error);
+    console.error("[Projects]", error);
 
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">
