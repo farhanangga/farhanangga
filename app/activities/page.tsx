@@ -13,17 +13,12 @@ export const metadata: Metadata = {
 
 /**
  * Satu-satunya sumber data: GET /api/activities (app/api/activities/route.ts).
- * API key hanya dipakai di server, tidak pernah dikirim ke browser.
  */
 async function fetchActivities(): Promise<ActivityItem[] | null> {
   const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
-  const key = (process.env.API_SECRET_KEY ?? "").trim();
 
   try {
-    const res = await fetch(`${base}/api/activities`, {
-      headers: { "x-api-key": key },
-      cache: "no-store",
-    });
+    const res = await fetch(`${base}/api/activities`, { cache: "no-store" });
     if (!res.ok) {
       console.error(`[Activities] API gagal: ${res.status} (${base}/api/activities)`);
       return null;

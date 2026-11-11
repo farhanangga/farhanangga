@@ -13,17 +13,12 @@ export const metadata: Metadata = {
 
 /**
  * Satu-satunya sumber data: GET /api/contacts (app/api/contacts/route.ts).
- * API key hanya dipakai di server, tidak pernah dikirim ke browser.
  */
 async function fetchContact(): Promise<ContactData | null> {
   const base = (process.env.API_BASE_URL ?? "http://localhost:3000").trim();
-  const key = (process.env.API_SECRET_KEY ?? "").trim();
 
   try {
-    const res = await fetch(`${base}/api/contacts`, {
-      headers: { "x-api-key": key },
-      cache: "no-store",
-    });
+    const res = await fetch(`${base}/api/contacts`, { cache: "no-store" });
     if (!res.ok) {
       console.error(`[Contact] API gagal: ${res.status} (${base}/api/contacts)`);
       return null;
@@ -37,7 +32,7 @@ async function fetchContact(): Promise<ContactData | null> {
 }
 
 /** Komponen yang mengakses data (harus berada di dalam <Suspense>) */
-async function ContactData() {
+async function ContactContent() {
   const data = await fetchContact();
 
   if (!data) {
@@ -79,7 +74,7 @@ export default function ContactPage() {
       <Navbar />
       <main>
         <Suspense fallback={<ContactSkeleton />}>
-          <ContactData />
+          <ContactContent />
         </Suspense>
       </main>
       <Footer />

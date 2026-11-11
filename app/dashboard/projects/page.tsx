@@ -12,6 +12,8 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import { ACCENT_GLOW, ACCENT_GRADIENT, Card } from "@/components/dashboard/shared";
 
@@ -30,7 +32,8 @@ type Project = {
   tabLabel: string;
 };
 
-type Params = { q?: string; cat?: string; view?: string };
+type Params = { q?: string; cat?: string; view?: string; delete?: string; error?: string };
+type DelHref = (id: string) => string;
 
 const BASE = "/dashboard/projects";
 const MAX_IMAGES = 10;
@@ -58,7 +61,6 @@ async function getProjects(): Promise<Project[]> {
       return [];
     }
 
-    // Kelompokkan gambar per proyek (maks 10, sudah terurut dari query)
     const imagesByProject = new Map<string, string[]>();
     for (const img of imagesRes.data ?? []) {
       const list = imagesByProject.get(img.project_id) ?? [];
@@ -66,7 +68,6 @@ async function getProjects(): Promise<Project[]> {
       imagesByProject.set(img.project_id, list);
     }
 
-    // Urutkan per tab (sesuai sort_order), lalu per posisi proyek
     return (tabsRes.data ?? []).flatMap((t) =>
       (projectsRes.data ?? [])
         .filter((r) => r.category === t.id)
@@ -95,6 +96,10 @@ async function getProjects(): Promise<Project[]> {
 const muted = "text-[color:var(--fg-muted)]";
 const focus = "outline-none focus-visible:ring-2 focus-visible:ring-[#5A64D8]";
 const iconBtn = `grid h-9 w-9 place-items-center rounded-xl bg-[color:var(--chip)] ${muted} transition hover:text-[color:var(--fg)] ${focus}`;
+const dangerBtn = `grid h-9 w-9 place-items-center rounded-xl bg-[color:var(--chip)] ${muted} transition hover:bg-red-500/15 hover:text-red-500 outline-none focus-visible:ring-2 focus-visible:ring-red-500`;
+
+/** Escape karakter khusus regex agar judul project aman dipakai di atribut pattern */
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 /* ── potongan UI kecil ─────────────────────────────────── */
 
@@ -132,7 +137,7 @@ function Tools({ tools }: { tools: string[] }) {
   );
 }
 
-function Actions({ p }: { p: Project }) {
+function Actions({ p, delHref }: { p: Project; delHref: DelHref }) {
   return (
     <div className="relative z-10 flex items-center justify-end gap-1.5">
       {p.url && (
@@ -148,6 +153,9 @@ function Actions({ p }: { p: Project }) {
       <Link href={`${BASE}/${p.id}/edit`} aria-label={`Edit ${p.title}`} title="Edit" className={iconBtn}>
         <Pencil size={15} />
       </Link>
+      <Link href={delHref(p.id)} scroll={false} aria-label={`Hapus ${p.title}`} title="Hapus" className={dangerBtn}>
+        <Trash2 size={15} />
+      </Link>
     </div>
   );
 }
@@ -156,9 +164,9 @@ function Actions({ p }: { p: Project }) {
 const stretch = "after:absolute after:inset-0 after:content-['']";
 
 /* ── tampilan daftar ───────────────────────────────────── */
-const COLS = "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1.6fr)_8.5rem_8rem] lg:items-center lg:gap-5";
+const COLS = "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1.6fr)_8.5rem_10rem] lg:items-center lg:gap-5";
 
-function ListView({ rows }: { rows: Project[] }) {
+function ListView({ rows, delHref }: { rows: Project[]; delHref: DelHref }) {
   return (
     <Card className="mt-4 overflow-hidden">
       <div className={`hidden px-5 py-3 text-xs font-medium ${muted} border-b border-[color:var(--chip)] ${COLS}`}>
@@ -190,7 +198,7 @@ function ListView({ rows }: { rows: Project[] }) {
 
             <div className="flex items-center justify-between gap-3 lg:contents">
               <span className={`w-fit truncate rounded-full bg-[color:var(--chip)] px-2.5 py-1 text-xs ${muted}`}>{p.tabLabel}</span>
-              <Actions p={p} />
+              <Actions p={p} delHref={delHref} />
             </div>
           </li>
         ))}
@@ -200,7 +208,7 @@ function ListView({ rows }: { rows: Project[] }) {
 }
 
 /* ── tampilan kartu ────────────────────────────────────── */
-function GridView({ rows }: { rows: Project[] }) {
+function GridView({ rows, delHref }: { rows: Project[]; delHref: DelHref }) {
   return (
     <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((p) => (
@@ -224,7 +232,7 @@ function GridView({ rows }: { rows: Project[] }) {
                 <Tools tools={p.tools ?? []} />
               </div>
               <div className="mt-auto pt-5">
-                <Actions p={p} />
+                <Actions p={p} delHref={delHref} />
               </div>
             </div>
           </Card>
@@ -234,9 +242,71 @@ function GridView({ rows }: { rows: Project[] }) {
   );
 }
 
+/* ── modal konfirmasi hapus (server-rendered, via ?delete=<id>) ── */
+function DeleteModal({ project, closeHref }: { project: Project; closeHref: string }) {
+  const phrase = `delete ${project.title}`;
+  const pattern = escapeRegex(phrase);
+
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="del-title" className="fixed inset-0 z-50 grid place-items-center p-4">
+      {/* backdrop: klik untuk menutup */}
+      <Link href={closeHref} scroll={false} aria-label="Tutup" className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      <div className="relative w-full max-w-md rounded-3xl bg-[color:var(--card)] p-6 text-[color:var(--fg)] shadow-2xl ring-1 ring-[color:var(--line)]">
+        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-red-500/15 text-red-500">
+          <TriangleAlert size={20} />
+        </span>
+        <h2 id="del-title" className="mt-4 text-lg font-semibold">
+          Hapus project?
+        </h2>
+        <p className={`mt-1 text-sm ${muted}`}>
+          Project <strong className="text-[color:var(--fg)]">{project.title}</strong> beserta gambarnya akan dihapus
+          permanen dan tidak bisa dikembalikan.
+        </p>
+
+        <form method="POST" action={`/api/projects/${project.id}/delete`} className="mt-5">
+          <label htmlFor="confirm" className="text-sm">
+            Ketik{" "}
+            <code className="select-all rounded-md bg-[color:var(--chip)] px-1.5 py-0.5 text-xs font-semibold">{phrase}</code>{" "}
+            untuk melanjutkan
+          </label>
+          <input
+            id="confirm"
+            name="confirm"
+            required
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+            pattern={pattern}
+            title={`Ketik persis: ${phrase}`}
+            placeholder={phrase}
+            className="mt-2 h-11 w-full rounded-2xl bg-[color:var(--card-hi)] px-3.5 text-sm text-[color:var(--fg)] outline-none ring-1 ring-transparent transition placeholder:text-[color:var(--fg-muted)] focus:ring-2 focus:ring-red-500"
+          />
+
+          <div className="mt-5 flex justify-end gap-2">
+            <Link
+              href={closeHref}
+              scroll={false}
+              className={`inline-flex h-10 items-center rounded-xl bg-[color:var(--chip)] px-4 text-sm font-medium ${focus}`}
+            >
+              Batal
+            </Link>
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-red-400 outline-none"
+            >
+              <Trash2 size={15} /> Hapus permanen
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ── halaman ───────────────────────────────────────────── */
 async function Content({ searchParams }: { searchParams: Promise<Params> }) {
-  const { q = "", cat = "all", view } = await searchParams;
+  const { q = "", cat = "all", view, delete: delId, error } = await searchParams;
   const v: "list" | "grid" = view === "grid" ? "grid" : "list";
   const all = await getProjects();
 
@@ -248,14 +318,18 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
       (!keyword || [p.title, p.role, p.type, ...(p.tools ?? [])].join(" ").toLowerCase().includes(keyword)),
   );
 
-  const href = (nextCat: string, nextView: string = v) => {
+  const href = (nextCat: string, nextView: string = v, extra?: Record<string, string>) => {
     const sp = new URLSearchParams();
     if (nextCat !== "all") sp.set("cat", nextCat);
     if (q) sp.set("q", q);
     if (nextView !== "list") sp.set("view", nextView);
+    for (const [k, val] of Object.entries(extra ?? {})) sp.set(k, val);
     const s = sp.toString();
     return `${BASE}${s ? `?${s}` : ""}`;
   };
+
+  const delHref: DelHref = (id) => href(cat, v, { delete: id });
+  const deleting = delId ? all.find((p) => p.id === delId) : undefined;
 
   const stats = [
     { label: "Total project", value: all.length, icon: FolderKanban, hero: true },
@@ -271,12 +345,9 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
 
   return (
     <>
-      {/* header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Project</h1>
-          <p className={`mt-1 text-sm ${muted}`}>Kelola semua project yang tampil di website portfolio.</p>
-        </div>
+      {/* header: judul halaman sudah ada di topbar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className={`text-sm ${muted}`}>Kelola semua project yang tampil di website portfolio.</p>
         <Link
           href={`${BASE}/new`}
           className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition hover:brightness-110 active:scale-[0.98] ${focus}`}
@@ -286,8 +357,14 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
         </Link>
       </div>
 
+      {error === "delete" && (
+        <p role="alert" className="mt-5 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          Project gagal dihapus. Pastikan teks konfirmasi benar, lalu coba lagi.
+        </p>
+      )}
+
       {/* statistik */}
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((s) => {
           const body = (
             <>
@@ -399,10 +476,12 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
           )}
         </Card>
       ) : v === "grid" ? (
-        <GridView rows={rows} />
+        <GridView rows={rows} delHref={delHref} />
       ) : (
-        <ListView rows={rows} />
+        <ListView rows={rows} delHref={delHref} />
       )}
+
+      {deleting && <DeleteModal project={deleting} closeHref={href(cat, v)} />}
     </>
   );
 }
@@ -411,8 +490,8 @@ function Skeleton() {
   const pulse = "animate-pulse motion-reduce:animate-none";
   return (
     <div aria-busy="true" aria-label="Memuat project" className={pulse}>
-      <div className="h-9 w-40 rounded-xl bg-[color:var(--chip)]" />
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="h-5 w-72 max-w-full rounded-lg bg-[color:var(--chip)]" />
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-28 rounded-3xl bg-[color:var(--card)]" />
         ))}

@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ChevronDown, CircleAlert, GitBranch, Globe, Info } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { Card } from "@/components/dashboard/shared";
-import { ImageDropzone, SubmitButton } from "@/components/dashboard/image-dropzone";
+import { ImageDropzone, SubmitButton } from "@/components/dashboard/imageDropzone";
 import { ImageOrganizer } from "@/components/dashboard/imageOrganizer";
 import { TagInput } from "@/components/dashboard/tagInput";
 
@@ -83,6 +83,10 @@ const csv = (v: FormDataEntryValue | null) =>
   String(v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const text = (v: FormDataEntryValue | null) => String(v ?? "").trim();
 
+/** Pesan error yang terbaca (PostgrestError bukan instance Error, jadi console.error-nya sering tampil `{}`). */
+const errText = (e: unknown) =>
+  e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : String(e);
+
 /** URL opsional: kosong = valid, selain itu harus http(s). */
 function isOptionalHttpUrl(v: string) {
   if (!v) return true;
@@ -94,33 +98,79 @@ function isOptionalHttpUrl(v: string) {
   }
 }
 
-/* ── data ──────────────────────────────────────────────── */
+/* ── supabase (server only) ────────────────────────────── */
 
-async function getTabs(): Promise<Tab[]> {
-  try {
-    const res = await fetch(`${process.env.API_BASE_URL}/api/projects`, {
-      headers: { "x-api-key": process.env.API_SECRET_KEY ?? "" },
-      cache: "no-store",
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-/* ── penyimpanan gambar ────────────────────────────────── */
-
-function bucket() {
+/** Client dengan service role: melewati RLS, jadi jangan pernah dipakai di komponen client. */
+function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY belum di-set di .env.local");
   }
-  const sb = createClient(url, key, { auth: { persistSession: false } });
-  return sb.storage.from(BUCKET);
+  return createClient(url, key, { auth: { persistSession: false } });
 }
+
+function bucket() {
+  return admin().storage.from(BUCKET);
+}
+
+/* ── data ──────────────────────────────────────────────── */
+
+/** Sama dengan GET /api/projects: tab → project, gambar diambil dari tabel project_images. */
+async function getTabs(): Promise<Tab[]> {
+  try {
+    const sb = admin();
+    const [tabsRes, projectsRes, imagesRes] = await Promise.all([
+      sb.from("project_tabs").select("id, label").order("sort_order"),
+      sb.from("projects").select("*").order("position"),
+      sb.from("project_images").select("project_id, position, src").order("position"),
+    ]);
+
+    const failed = (
+      [
+        ["project_tabs", tabsRes.error],
+        ["projects", projectsRes.error],
+        ["project_images", imagesRes.error],
+      ] as const
+    ).find(([, err]) => err);
+    if (failed) {
+      console.error(`[getTabs] tabel ${failed[0]}:`, errText(failed[1]));
+      return [];
+    }
+
+    const imagesByProject = new Map<string, string[]>();
+    for (const img of imagesRes.data ?? []) {
+      const list = imagesByProject.get(img.project_id) ?? [];
+      list.push(img.src);
+      imagesByProject.set(img.project_id, list);
+    }
+
+    const projects: (Project & { category: string })[] = (projectsRes.data ?? []).map((r) => ({
+      id: String(r.id),
+      category: String(r.category),
+      title: r.title ?? undefined,
+      type: r.type ?? undefined,
+      role: r.role ?? undefined,
+      tools: r.tools ?? [],
+      desc: r.desc ?? undefined,
+      highlights: r.highlights ?? [],
+      url: r.url ?? undefined,
+      repo: r.repo ?? undefined,
+      images: imagesByProject.get(String(r.id)) ?? [],
+    }));
+
+    return (tabsRes.data ?? []).map((t) => ({
+      id: String(t.id),
+      label: String(t.label),
+      projects: projects.filter((p) => p.category === String(t.id)),
+    }));
+  } catch (e) {
+    console.error("[getTabs] gagal:", errText(e));
+    return [];
+  }
+}
+
+/* ── penyimpanan gambar ────────────────────────────────── */
 
 const extOf = (f: File) => {
   const dot = f.name.lastIndexOf(".");
@@ -256,43 +306,56 @@ async function updateProject(formData: FormData) {
   try {
     uploaded = await uploadImages(files);
   } catch (e) {
-    console.error("[updateProject] upload gagal:", e);
+    console.error("[updateProject] upload gagal:", errText(e));
     redirect(`${back}?error=upload`);
   }
 
-  /* 6. simpan ke API */
-  const body = {
-    title: fields.title,
-    category: fields.category,
-    type: fields.type,
-    role: fields.role,
-    tools: csv(formData.get("tools")),
-    desc: fields.desc,
-    highlights: lines(formData.get("highlights")),
-    url: fields.url || null,
-    repo: fields.repo || null,
-    images: [...kept, ...uploaded.urls],
-  };
+  /* 6. simpan ke database
+   *    - projects       : update baris project
+   *    - project_images : upsert baris `${id}-${n}` sesuai urutan baru, lalu hapus sisa baris yang melebihi jumlah gambar */
+  const images = [...kept, ...uploaded.urls];
 
   let ok = false;
+  let imagesCommitted = false; // baris project_images sudah merujuk gambar baru
   try {
-    const res = await fetch(`${process.env.API_BASE_URL}/api/projects/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "x-api-key": process.env.API_SECRET_KEY ?? "" },
-      body: JSON.stringify(body),
-      cache: "no-store",
-    });
-    ok = res.ok;
-    if (!res.ok) {
-      console.error(`[updateProject] PUT /api/projects/${id} → ${res.status}`, await res.text().catch(() => ""));
+    const db = admin();
+
+    const upd = await db
+      .from("projects")
+      .update({
+        title: fields.title,
+        category: fields.category,
+        type: fields.type,
+        role: fields.role,
+        tools: csv(formData.get("tools")),
+        desc: fields.desc,
+        highlights: lines(formData.get("highlights")),
+        url: fields.url || null,
+        repo: fields.repo || null,
+      })
+      .eq("id", id);
+    if (upd.error) throw upd.error;
+
+    if (images.length > 0) {
+      const up = await db.from("project_images").upsert(
+        images.map((src, i) => ({ id: `${id}-${i + 1}`, project_id: id, position: i + 1, src })),
+        { onConflict: "id" }
+      );
+      if (up.error) throw up.error;
+      imagesCommitted = true;
     }
+
+    const del = await db.from("project_images").delete().eq("project_id", id).gt("position", images.length);
+    if (del.error) throw del.error;
+
+    ok = true;
   } catch (e) {
-    console.error(`[updateProject] PUT /api/projects/${id} tidak tersambung:`, e);
+    console.error(`[updateProject] simpan project ${id} gagal:`, errText(e));
   }
 
   if (!ok) {
-    // gagal: buang gambar baru agar tidak jadi yatim di bucket
-    if (uploaded.paths.length) await bucket().remove(uploaded.paths).catch(() => {});
+    // gagal sebelum gambar baru tercatat di database: buang file baru agar tidak jadi yatim di bucket
+    if (!imagesCommitted && uploaded.paths.length) await bucket().remove(uploaded.paths).catch(() => {});
     redirect(`${back}?error=1`);
   }
 

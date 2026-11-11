@@ -1,14 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Menu, Moon, Search, Sun } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { ACCENT_GLOW, ACCENT_GRADIENT, EASE, SIDEBAR_BG, THEME_KEY, type Theme } from "./shared";
+import { useShell } from "./shell";
 
 /* foto profil: public/assets/profil-pic.jpg */
 const PROFILE_SRC = "/assets/profil-pic.jpg";
-import { useShell } from "./shell";
+
+/* nama segmen URL -> label tampilan (tambah sesuai menu sidebar) */
+const LABELS: Record<string, string> = {
+  projects: "Project",
+  activities: "Kegiatan",
+  contacts: "Kontak",
+  settings: "Pengaturan",
+};
+
+const isId = (s: string) => /^[0-9a-f-]{8,}$/i.test(s) || /^\d+$/.test(s);
+const prettify = (s: string) => LABELS[s] ?? s.replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+/** Turunkan judul halaman dari pathname, mis. /dashboard/projects/new -> "Tambah Project" */
+function titleFromPath(pathname: string) {
+  const seg = pathname.split("/").filter(Boolean).slice(1); // buang "dashboard"
+  if (seg.length === 0) return "Ringkasan";
+
+  const last = seg[seg.length - 1];
+  if (last === "new") return `Tambah ${prettify(seg[0])}`;
+  if (last === "edit") return `Edit ${prettify(seg[0])}`;
+  if (isId(last)) return `Detail ${prettify(seg[0])}`;
+  return prettify(last);
+}
 
 /* ── toggle dark / light ───────────────────────────────── */
 function ThemeToggle({ initial }: { initial: Theme }) {
@@ -60,22 +84,10 @@ function ThemeToggle({ initial }: { initial: Theme }) {
 }
 
 /* ── topbar (fixed) ────────────────────────────────────── */
-export function Topbar({ name, theme }: { name: string; theme: Theme }) {
+export function Topbar({ name, theme, title }: { name: string; theme: Theme; title?: string }) {
   const { collapsed, setMobileOpen } = useShell();
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // tekan "/" untuk fokus ke search
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (e.key === "/" && !/^(INPUT|TEXTAREA)$/.test(t.tagName) && !t.isContentEditable) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const pathname = usePathname();
+  const heading = title ?? titleFromPath(pathname);
 
   return (
     <header
@@ -102,22 +114,15 @@ export function Topbar({ name, theme }: { name: string; theme: Theme }) {
           <Menu size={20} />
         </button>
 
-        <label
-          className="flex h-12 min-w-0 flex-1 items-center gap-3 rounded-2xl bg-[color:var(--card)] px-4 ring-1 ring-[color:var(--line)] transition-colors duration-300 focus-within:ring-2 focus-within:ring-[#5A64D8]"
+        {/* judul halaman, tetap di kotak putih (card) */}
+        <div
+          className="flex h-12 min-w-0 flex-1 items-center rounded-2xl bg-[color:var(--card)] px-5 ring-1 ring-[color:var(--line)] transition-colors duration-300"
           style={{ boxShadow: "var(--shadow)" }}
         >
-          <Search size={20} className="shrink-0 text-[color:var(--fg-muted)]" />
-          <input
-            ref={searchRef}
-            type="search"
-            placeholder="Cari…"
-            aria-label="Cari"
-            className="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[color:var(--fg)] outline-none placeholder:text-[color:var(--fg-muted)] [&::-webkit-search-cancel-button]:hidden"
-          />
-          <kbd className="hidden rounded-md bg-[color:var(--chip)] px-2 py-0.5 text-xs font-medium text-[color:var(--fg-muted)] sm:block">
-            /
-          </kbd>
-        </label>
+          <h1 className="truncate text-base font-semibold tracking-tight text-[color:var(--fg)] sm:text-lg">
+            {heading}
+          </h1>
+        </div>
 
         <ThemeToggle initial={theme} />
 
