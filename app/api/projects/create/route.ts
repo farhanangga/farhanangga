@@ -1,9 +1,7 @@
-
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { getSession } from "@/lib/session";
-
-export const runtime = "nodejs";
 
 const BASE = "/dashboard/projects";
 const ID_DIGITS = 4;
@@ -67,10 +65,7 @@ function isOptionalHttpUrl(value: string) {
 }
 
 function isSoftwareEngineer(tab?: Tab) {
-  return (
-    !!tab &&
-    /software[\s_-]*engineer/i.test(`${tab.id} ${tab.label}`)
-  );
+  return !!tab && /software[\s_-]*engineer/i.test(`${tab.id} ${tab.label}`);
 }
 
 function redirectTo(request: NextRequest, path: string) {
@@ -80,29 +75,23 @@ function redirectTo(request: NextRequest, path: string) {
 async function getTabs(db: ReturnType<typeof adminClient>) {
   const [tabsRes, projectsRes] = await Promise.all([
     db.from("project_tabs").select("id, label").order("sort_order"),
-    db
-      .from("projects")
-      .select("id, category, type, role")
-      .order("position"),
+    db.from("projects").select("id").order("position"),
   ]);
 
   if (tabsRes.error) throw tabsRes.error;
   if (projectsRes.error) throw projectsRes.error;
 
-  const tabs = (tabsRes.data ?? []) as Tab[];
-
   return {
-    tabs,
-    projects: projectsRes.data ?? [],
+    tabs: (tabsRes.data ?? []) as Tab[],
+    projects: (projectsRes.data ?? []) as { id: string }[],
   };
 }
 
+/** ID berikutnya: angka tertinggi yang sudah ada + 1, dipad 4 digit. */
 function nextProjectId(projects: { id: string }[]) {
   const max = projects.reduce(
     (maximum, project) =>
-      /^\d+$/.test(project.id)
-        ? Math.max(maximum, Number(project.id))
-        : maximum,
+      /^\d+$/.test(project.id) ? Math.max(maximum, Number(project.id)) : maximum,
     0
   );
 
@@ -112,13 +101,12 @@ function nextProjectId(projects: { id: string }[]) {
 function extOf(file: File) {
   const dot = file.name.lastIndexOf(".");
   const raw =
-    dot > -1
-      ? file.name.slice(dot + 1)
-      : file.type.split("/")[1] ?? "";
+    dot > -1 ? file.name.slice(dot + 1) : file.type.split("/")[1] ?? "";
 
   return raw.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
 }
 
+/** Unggah berurutan (00000001.jpg, 00000002.png, …). Bentrok nama → nomor dinaikkan lalu dicoba lagi. */
 async function uploadImages(
   db: ReturnType<typeof adminClient>,
   files: File[]
@@ -141,13 +129,8 @@ async function uploadImages(
     let max = 0;
 
     for (const file of data ?? []) {
-      const match = new RegExp(`^(\\d{${IMG_DIGITS}})\\.`).exec(
-        file.name
-      );
-
-      if (match) {
-        max = Math.max(max, Number(match[1]));
-      }
+      const match = new RegExp(`^(\\d{${IMG_DIGITS}})\\.`).exec(file.name);
+      if (match) max = Math.max(max, Number(match[1]));
     }
 
     let number = max + 1;
@@ -158,27 +141,20 @@ async function uploadImages(
       for (let attempt = 0; attempt < 5 && !saved; attempt++) {
         const path = `${String(number).padStart(IMG_DIGITS, "0")}.${extOf(file)}`;
 
-        const { error: uploadError } = await store.upload(
-          path,
-          file,
-          {
-            contentType: file.type,
-            upsert: false,
-          }
-        );
+        const { error: uploadError } = await store.upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        });
 
         if (!uploadError) {
           paths.push(path);
-
-          const { data: publicData } = store.getPublicUrl(path);
-          urls.push(publicData.publicUrl);
-
+          urls.push(store.getPublicUrl(path).data.publicUrl);
           saved = true;
         } else if (
           /already exists|duplicate/i.test(uploadError.message) ||
           (uploadError as { statusCode?: string }).statusCode === "409"
         ) {
-          // Nomor sudah digunakan, coba nomor berikutnya.
+          // Nomor sudah dipakai pihak lain, coba nomor berikutnya.
         } else {
           throw uploadError;
         }
@@ -196,10 +172,36 @@ async function uploadImages(
     if (paths.length) {
       await store.remove(paths).catch(() => {});
     }
-
     throw error;
   }
 }
+
+/* ── GET: data untuk form (kategori + ID berikutnya) ───── */
+
+export async function GET() {
+  const session = await getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const db = adminClient();
+    const { tabs, projects } = await getTabs(db);
+
+    return NextResponse.json({
+      data: { tabs, nextId: nextProjectId(projects) },
+    });
+  } catch (error) {
+    console.error("[create project] GET error:", error);
+    return NextResponse.json(
+      { error: "Gagal memuat data form." },
+      { status: 500 }
+    );
+  }
+}
+
+/* ── POST: simpan project baru ─────────────────────────── */
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -217,10 +219,7 @@ export async function POST(request: NextRequest) {
     // 1. Validasi gambar
     const files = formData
       .getAll("images")
-      .filter(
-        (file): file is File =>
-          file instanceof File && file.size > 0
-      );
+      .filter((file): file is File => file instanceof File && file.size > 0);
 
     if (files.length > MAX_IMAGES) {
       return redirectTo(request, `${BASE}/new?error=limit`);
@@ -234,9 +233,8 @@ export async function POST(request: NextRequest) {
       return redirectTo(request, `${BASE}/new?error=size`);
     }
 
-    // 2. Ambil koneksi database
+    // 2. Koneksi database + data referensi
     const db = adminClient();
-
     const { tabs, projects } = await getTabs(db);
 
     // 3. Ambil data form
@@ -250,15 +248,12 @@ export async function POST(request: NextRequest) {
       repo: text(formData.get("repo")),
     };
 
-    const selectedTab = tabs.find(
-      (tab) => tab.id === fields.category
-    );
+    const selectedTab = tabs.find((tab) => tab.id === fields.category);
 
-    const repo = isSoftwareEngineer(selectedTab)
-      ? fields.repo
-      : "";
+    // repository hanya berlaku untuk kategori Software Engineer
+    const repo = isSoftwareEngineer(selectedTab) ? fields.repo : "";
 
-    // 4. Validasi input
+    // 4. Validasi isian
     const valid =
       fields.title &&
       fields.category &&
@@ -276,7 +271,7 @@ export async function POST(request: NextRequest) {
     // 5. Generate ID project
     projectId = nextProjectId(projects);
 
-    // 6. Upload gambar
+    // 6. Upload gambar (setelah semua isian valid, supaya tidak ada upload sia-sia)
     try {
       uploaded = await uploadImages(db, files);
     } catch (error) {
@@ -284,7 +279,7 @@ export async function POST(request: NextRequest) {
       return redirectTo(request, `${BASE}/new?error=upload`);
     }
 
-    // 7. Tentukan posisi project
+    // 7. Posisi project: paling akhir
     const last = await db
       .from("projects")
       .select("position")
@@ -295,7 +290,7 @@ export async function POST(request: NextRequest) {
 
     const position = (last.data?.[0]?.position ?? 0) + 1;
 
-    // 8. Simpan project ke database
+    // 8. Simpan project
     const insertProject = await db.from("projects").insert({
       id: projectId,
       category: fields.category,
@@ -312,7 +307,7 @@ export async function POST(request: NextRequest) {
 
     if (insertProject.error) throw insertProject.error;
 
-    // 9. Simpan gambar ke project_images
+    // 9. Simpan gambar
     if (uploaded.urls.length > 0) {
       const rows = uploaded.urls.map((src, index) => ({
         id: `${projectId}-${index + 1}`,
@@ -321,29 +316,25 @@ export async function POST(request: NextRequest) {
         src,
       }));
 
-      const insertImages = await db
-        .from("project_images")
-        .insert(rows);
+      const insertImages = await db.from("project_images").insert(rows);
 
       if (insertImages.error) {
+        // jangan tinggalkan project tanpa gambar-gambarnya
         await db.from("projects").delete().eq("id", projectId);
         throw insertImages.error;
       }
     }
 
     // 10. Berhasil
+    revalidatePath(BASE);
     return redirectTo(request, BASE);
   } catch (error) {
     console.error("[create project] Error:", error);
 
-    // Bersihkan gambar jika penyimpanan gagal
+    // jangan tinggalkan gambar yatim di bucket
     if (uploaded.paths.length) {
       try {
-        const db = adminClient();
-
-        await db.storage
-          .from(BUCKET)
-          .remove(uploaded.paths);
+        await adminClient().storage.from(BUCKET).remove(uploaded.paths);
       } catch (cleanupError) {
         console.error("[create project] Cleanup error:", cleanupError);
       }
