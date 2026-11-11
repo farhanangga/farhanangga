@@ -94,70 +94,18 @@ function isOptionalHttpUrl(v: string) {
   }
 }
 
-/* ── Supabase ──────────────────────────────────────────── */
-
-// Client untuk membaca (publishable key, tunduk pada RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  { auth: { persistSession: false } }
-);
-
-// Client untuk menulis (secret key, hanya di server, melewati RLS)
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY belum di-set di .env.local");
-  }
-  return createClient(url, key, { auth: { persistSession: false } });
-}
-
 /* ── data ──────────────────────────────────────────────── */
 
 async function getTabs(): Promise<Tab[]> {
   try {
-    const [tabsRes, projectsRes, imagesRes] = await Promise.all([
-      supabase.from("project_tabs").select("id, label").order("sort_order"),
-      supabase.from("projects").select("*").order("position"),
-      supabase.from("project_images").select("project_id, position, src").order("position"),
-    ]);
-    if (tabsRes.error || projectsRes.error || imagesRes.error) {
-      console.error(
-        "[edit project] getTabs:",
-        tabsRes.error?.message ?? projectsRes.error?.message ?? imagesRes.error?.message
-      );
-      return [];
-    }
-
-    // Kelompokkan gambar per proyek (maks 10, sudah terurut dari query)
-    const imagesByProject = new Map<string, string[]>();
-    for (const img of imagesRes.data ?? []) {
-      const list = imagesByProject.get(img.project_id) ?? [];
-      if (list.length < MAX_IMAGES) list.push(img.src);
-      imagesByProject.set(img.project_id, list);
-    }
-
-    return (tabsRes.data ?? []).map((t) => ({
-      id: t.id,
-      label: t.label,
-      projects: (projectsRes.data ?? [])
-        .filter((r) => r.category === t.id)
-        .map((r) => ({
-          id: r.id,
-          type: r.type,
-          role: r.role,
-          title: r.title,
-          tools: r.tools ?? [],
-          desc: r.desc,
-          highlights: r.highlights ?? [],
-          url: r.url ?? undefined,
-          repo: r.repo ?? undefined,
-          images: imagesByProject.get(r.id) ?? [],
-        })),
-    }));
-  } catch (e) {
-    console.error("[edit project] getTabs:", e);
+    const res = await fetch(`${process.env.API_BASE_URL}/api/projects`, {
+      headers: { "x-api-key": process.env.API_SECRET_KEY ?? "" },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data ?? [];
+  } catch {
     return [];
   }
 }
@@ -165,7 +113,13 @@ async function getTabs(): Promise<Tab[]> {
 /* ── penyimpanan gambar ────────────────────────────────── */
 
 function bucket() {
-  return adminClient().storage.from(BUCKET);
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY belum di-set di .env.local");
+  }
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+  return sb.storage.from(BUCKET);
 }
 
 const extOf = (f: File) => {
@@ -306,50 +260,34 @@ async function updateProject(formData: FormData) {
     redirect(`${back}?error=upload`);
   }
 
-  /* 6. simpan langsung ke database */
-  const images = [...kept, ...uploaded.urls];
+  /* 6. simpan ke API */
+  const body = {
+    title: fields.title,
+    category: fields.category,
+    type: fields.type,
+    role: fields.role,
+    tools: csv(formData.get("tools")),
+    desc: fields.desc,
+    highlights: lines(formData.get("highlights")),
+    url: fields.url || null,
+    repo: fields.repo || null,
+    images: [...kept, ...uploaded.urls],
+  };
+
   let ok = false;
   try {
-    const db = adminClient();
-
-    // update baris project (position tidak diubah)
-    const upd = await db
-      .from("projects")
-      .update({
-        category: fields.category,
-        title: fields.title,
-        type: fields.type,
-        role: fields.role,
-        tools: csv(formData.get("tools")),
-        desc: fields.desc,
-        highlights: lines(formData.get("highlights")),
-        url: fields.url || null,
-        repo: fields.repo || null,
-      })
-      .eq("id", id)
-      .select("id");
-    if (upd.error) throw upd.error;
-    if (!upd.data || upd.data.length === 0) throw new Error("Project tidak ditemukan");
-
-    // ganti seluruh gambar project (simpan salinan lama untuk pemulihan)
-    const old = await db.from("project_images").select("id, project_id, position, src").eq("project_id", id);
-    if (old.error) throw old.error;
-
-    const del = await db.from("project_images").delete().eq("project_id", id);
-    if (del.error) throw del.error;
-
-    if (images.length > 0) {
-      const rows = images.map((src, i) => ({ id: `${id}-${i + 1}`, project_id: id, position: i + 1, src }));
-      const ins = await db.from("project_images").insert(rows);
-      if (ins.error) {
-        // kembalikan gambar lama agar project tidak kehilangan gambarnya
-        if (old.data && old.data.length > 0) await db.from("project_images").insert(old.data);
-        throw ins.error;
-      }
+    const res = await fetch(`${process.env.API_BASE_URL}/api/projects/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.API_SECRET_KEY ?? "" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    ok = res.ok;
+    if (!res.ok) {
+      console.error(`[updateProject] PUT /api/projects/${id} → ${res.status}`, await res.text().catch(() => ""));
     }
-    ok = true;
   } catch (e) {
-    console.error(`[updateProject] simpan project ${id} gagal:`, e);
+    console.error(`[updateProject] PUT /api/projects/${id} tidak tersambung:`, e);
   }
 
   if (!ok) {
