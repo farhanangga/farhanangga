@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import type { ContactData } from "@/lib/data";
-import { getContact } from "@/lib/data";
+import { GET as getContactRoute } from "@/app/api/contacts/route";
 import { ContactClient } from "@/components/contacts/clientContacts";
-// TODO: sesuaikan path & nama export dengan file navbar/footer Anda di components/layout
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -12,13 +11,18 @@ export const metadata: Metadata = {
   description: "Hubungi Farhan Angga Riyanto untuk proyek, kolaborasi, atau sekadar menyapa.",
 };
 
-// Data selalu fresh, setara dengan cache: "no-store" sebelumnya
-export const dynamic = "force-dynamic";
-
+/**
+ * Satu-satunya sumber data: handler GET di app/api/contacts/route.ts.
+ */
 async function fetchContact(): Promise<ContactData | null> {
   try {
-    const data = await getContact();
-    return data && Array.isArray(data.links) ? data : null;
+    const res = await getContactRoute();
+    if (!res.ok) {
+      console.error(`[Contact] route gagal: ${res.status}`);
+      return null;
+    }
+    const json = (await res.json()) as { data?: ContactData };
+    return json.data && Array.isArray(json.data.links) ? json.data : null;
   } catch (err) {
     console.error("[Contact] gagal memuat data", err);
     return null;

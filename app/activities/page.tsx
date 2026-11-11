@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import type { ActivityItem } from "@/lib/data";
-import { getActivities } from "@/lib/data";
+import { GET as getActivitiesRoute } from "@/app/api/activities/route";
 import { ActivitiesClient } from "@/components/activities/clientActivities";
-// TODO: sesuaikan path & nama export dengan file navbar/footer Anda
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -12,17 +11,25 @@ export const metadata: Metadata = {
   description: "Kepanitiaan dan kegiatan organisasi yang pernah diikuti Farhan Angga Riyanto.",
 };
 
-// Data selalu fresh, setara dengan cache: "no-store" sebelumnya
-export const dynamic = "force-dynamic";
-
+/**
+ * Satu-satunya sumber data: handler GET di app/api/activities/route.ts.
+ */
 async function fetchActivities(): Promise<ActivityItem[] | null> {
   try {
-    return await getActivities();
+    const res = await getActivitiesRoute();
+    if (!res.ok) {
+      console.error(`[Activities] route gagal: ${res.status}`);
+      return null;
+    }
+    const json = (await res.json()) as { data?: ActivityItem[] };
+    return Array.isArray(json.data) ? json.data : null;
   } catch (err) {
     console.error("[Activities] gagal memuat data", err);
     return null;
   }
 }
+
+// ...ActivitiesContent, ActivitiesSkeleton, ActivitiesPage: tidak berubah
 
 /** Komponen yang mengakses data (harus berada di dalam <Suspense>) */
 async function ActivitiesContent() {
