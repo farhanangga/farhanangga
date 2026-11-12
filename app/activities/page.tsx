@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 
 /**
  * Satu-satunya sumber data: handler GET di app/api/activities/route.ts.
+ * Gambar sudah berupa URL publik dari bucket activitiesImages.
  */
 async function fetchActivities(): Promise<ActivityItem[] | null> {
   try {
@@ -28,8 +29,6 @@ async function fetchActivities(): Promise<ActivityItem[] | null> {
     return null;
   }
 }
-
-// ...ActivitiesContent, ActivitiesSkeleton, ActivitiesPage: tidak berubah
 
 /** Komponen yang mengakses data (harus berada di dalam <Suspense>) */
 async function ActivitiesContent() {

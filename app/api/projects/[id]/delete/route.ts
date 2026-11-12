@@ -1,90 +1,109 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
 import { getSession } from "@/lib/session";
 
+const BASE = "/dashboard/projects";
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET ?? "projectsImages";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+type ImageRow = { id: string; project_id: string; src: string; position: number };
 
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) return null;
+
+  if (!url || !key) {
+    throw new Error("Konfigurasi Supabase server belum lengkap.");
+  }
+
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/** URL publik → path di bucket. Hanya untuk file di bucket ini; selain itu null (tidak disentuh). */
-function pathFromUrl(url: string): string | null {
-  const marker = `/storage/v1/object/public/${BUCKET}/`;
-  const i = url.indexOf(marker);
-  if (i === -1) return null;
-  try {
-    return decodeURIComponent(url.slice(i + marker.length).split("?")[0]);
-  } catch {
-    return null;
-  }
+function redirectTo(request: NextRequest, path: string) {
+  return NextResponse.redirect(new URL(path, request.url), 303);
 }
 
-// DELETE /api/projects/:id
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+/** Path file di bucket dari public URL. Null jika bukan file milik bucket ini. */
+function storagePathFromUrl(src: string) {
+  const marker = `/${BUCKET}/`;
+  const i = src.indexOf(marker);
+  if (i === -1) return null;
+  const path = decodeURIComponent(src.slice(i + marker.length).split("?")[0]);
+  return path || null;
+}
+
+/* ── POST: hapus project + gambarnya (dikonfirmasi dengan mengetik "delete <judul project>") ── */
+
+export async function POST(request: NextRequest, { params }: Ctx) {
   const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ success: false, error: "Tidak diizinkan" }, { status: 401 });
-  }
+  if (!session) return redirectTo(request, "/admin");
 
   const { id } = await params;
-  if (!/^\d{1,10}$/.test(id)) {
-    return NextResponse.json({ success: false, error: "ID project tidak valid" }, { status: 400 });
-  }
 
-  const db = adminClient();
-  if (!db) {
-    console.error("[API DELETE /projects] SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY belum di-set");
-    return NextResponse.json({ success: false, error: "Server belum dikonfigurasi untuk menulis data" }, { status: 500 });
-  }
+  try {
+    const formData = await request.formData();
+    const confirm = String(formData.get("confirm") ?? "").trim();
+    const db = adminClient();
 
-  // 1. project harus ada
-  const found = await db.from("projects").select("id").eq("id", id).maybeSingle();
-  if (found.error) {
-    console.error("[API DELETE /projects] cek project:", found.error.message);
-    return NextResponse.json({ success: false, error: "Gagal membaca project" }, { status: 500 });
-  }
-  if (!found.data) {
-    return NextResponse.json({ success: false, error: "Project tidak ditemukan" }, { status: 404 });
-  }
+    // 1. Project harus ada
+    const { data: project, error: findError } = await db
+      .from("projects")
+      .select("id, title")
+      .eq("id", id)
+      .maybeSingle();
+    if (findError) throw findError;
+    if (!project) return redirectTo(request, `${BASE}?error=notfound`);
 
-  // 2. simpan salinan baris gambar (untuk dipulihkan jika penghapusan project gagal)
-  const imgs = await db.from("project_images").select("id, project_id, position, src").eq("project_id", id);
-  if (imgs.error) {
-    console.error("[API DELETE /projects] baca project_images:", imgs.error.message);
-    return NextResponse.json({ success: false, error: "Gagal membaca gambar project" }, { status: 500 });
-  }
-  const imageRows = imgs.data ?? [];
-
-  // 3. hapus baris gambar, lalu project
-  const delImgs = await db.from("project_images").delete().eq("project_id", id);
-  if (delImgs.error) {
-    console.error("[API DELETE /projects] hapus project_images:", delImgs.error.message);
-    return NextResponse.json({ success: false, error: "Gagal menghapus gambar project" }, { status: 500 });
-  }
-
-  const delProject = await db.from("projects").delete().eq("id", id);
-  if (delProject.error) {
-    console.error("[API DELETE /projects] hapus projects:", delProject.error.message);
-    // pulihkan baris gambar agar project tidak kehilangan gambarnya
-    if (imageRows.length > 0) {
-      const restore = await db.from("project_images").insert(imageRows);
-      if (restore.error) console.error("[API DELETE /projects] pulihkan project_images:", restore.error.message);
+    // 2. Teks konfirmasi harus persis (validasi sebenarnya ada di server, bukan hanya atribut pattern)
+    if (confirm !== `delete ${project.title}`.trim()) {
+      return redirectTo(request, `${BASE}?error=delete`);
     }
-    return NextResponse.json({ success: false, error: "Gagal menghapus project" }, { status: 500 });
-  }
 
-  // 4. berhasil: hapus file gambar di bucket (gagal di sini tidak membatalkan penghapusan)
-  const paths = imageRows.map((r) => pathFromUrl(r.src)).filter((p): p is string => !!p);
-  if (paths.length > 0) {
-    const rm = await db.storage.from(BUCKET).remove(paths);
-    if (rm.error) console.error("[API DELETE /projects] hapus file bucket:", rm.error.message);
-  }
+    // 3. Ambil baris gambar (untuk membersihkan bucket dan untuk cadangan bila gagal)
+    const { data: imageData, error: imagesError } = await db
+      .from("project_images")
+      .select("id, project_id, src, position")
+      .eq("project_id", id);
+    if (imagesError) throw imagesError;
+    const images = (imageData ?? []) as ImageRow[];
 
-  revalidatePath("/dashboard/projects");
-  return NextResponse.json({ success: true, id });
+    // 4. Hapus baris gambar lalu project-nya
+    if (images.length > 0) {
+      const delImages = await db.from("project_images").delete().eq("project_id", id);
+      if (delImages.error) throw delImages.error;
+    }
+
+    const delProject = await db.from("projects").delete().eq("id", id);
+    if (delProject.error) {
+      // kembalikan baris gambar supaya project tidak kehilangan gambar
+      if (images.length > 0) {
+        const restore = await db.from("project_images").insert(images);
+        if (restore.error) console.error("[delete project] Restore gambar gagal:", restore.error);
+      }
+      throw delProject.error;
+    }
+
+    // 5. Hapus file dari bucket (terbaik-usaha, tidak membatalkan penghapusan)
+    try {
+      const paths = images
+        .map((img) => storagePathFromUrl(img.src))
+        .filter((p): p is string => !!p);
+      if (paths.length) {
+        const { error } = await db.storage.from(BUCKET).remove(paths);
+        if (error) console.error("[delete project] Hapus file gagal:", error);
+      }
+    } catch (cleanupError) {
+      console.error("[delete project] Hapus file gagal:", cleanupError);
+    }
+
+    revalidatePath(BASE);
+    revalidatePath("/projects");
+    revalidatePath("/");
+    return redirectTo(request, BASE);
+  } catch (error) {
+    console.error("[delete project] Error:", error);
+    return redirectTo(request, `${BASE}?error=delete`);
+  }
 }
