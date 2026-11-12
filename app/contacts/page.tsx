@@ -11,8 +11,24 @@ export const metadata: Metadata = {
   description: "Hubungi Farhan Angga Riyanto untuk proyek, kolaborasi, atau sekadar menyapa.",
 };
 
+type ContactLink = ContactData["links"][number];
+
+/** Bentuk baris yang dikembalikan GET /api/contacts (kolom `description` sudah dipetakan jadi `desc`). */
+type ContactRow = {
+  id: string;
+  platform: string;
+  icon: string;
+  handle: string;
+  href: string;
+  desc: string;
+  position: number;
+};
+
 /**
  * Satu-satunya sumber data: handler GET di app/api/contacts/route.ts.
+ * Route mengembalikan { data: ContactRow[] } (sudah terurut berdasarkan position),
+ * jadi di sini dibungkus menjadi ContactData { links }.
+ * null = gagal memuat (beda dengan links kosong = memang belum ada kontak).
  */
 async function fetchContact(): Promise<ContactData | null> {
   try {
@@ -21,8 +37,18 @@ async function fetchContact(): Promise<ContactData | null> {
       console.error(`[Contact] route gagal: ${res.status}`);
       return null;
     }
-    const json = (await res.json()) as { data?: ContactData };
-    return json.data && Array.isArray(json.data.links) ? json.data : null;
+    const json = (await res.json()) as { data?: ContactRow[] };
+    if (!Array.isArray(json.data)) return null;
+
+    const links: ContactLink[] = json.data.map(({ platform, icon, handle, href, desc }) => ({
+      platform,
+      icon,
+      handle,
+      href,
+      desc,
+    })) as ContactLink[];
+
+    return { links } as ContactData;
   } catch (err) {
     console.error("[Contact] gagal memuat data", err);
     return null;

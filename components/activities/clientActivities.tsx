@@ -189,7 +189,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                 animate={{ y: 0 }}
                 transition={{ duration: 0.8, ease: EASE }}
               >
-                Kepanitiaan
+                My Activities
               </motion.span>
             </h1>
             <motion.p
