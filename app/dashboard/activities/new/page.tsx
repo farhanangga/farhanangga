@@ -130,7 +130,6 @@ async function Content({ searchParams }: { searchParams: Promise<{ error?: strin
 
   return (
     <>
-      <h1 className="mt-0 text-center text-xl font-semibold tracking-tight sm:text-2xl lg:mt-4 lg:text-left">Tambah kegiatan</h1>
       <p className={`mt-1 hidden text-sm lg:block ${muted}`}>
         Isi detail kegiatan atau kepanitiaan yang akan tampil di website portfolio.
       </p>

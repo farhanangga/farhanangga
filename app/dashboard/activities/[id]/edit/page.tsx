@@ -163,7 +163,6 @@ async function Content({
 
   return (
     <>
-      <h1 className="mt-0 text-center text-xl font-semibold tracking-tight sm:text-2xl lg:mt-4 lg:text-left">Edit activity</h1>
       <p className={`mt-1 hidden text-sm lg:block ${muted}`}>Ubah detail activity yang tampil di website portfolio.</p>
 
       {error && (

@@ -12,7 +12,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", Icon: FolderKanban },
   { href: "/dashboard/activities", label: "Activities", Icon: Activity },
-  { href: "/dashboard/contact", label: "Contact", Icon: Mail },
+  { href: "/dashboard/contacts", label: "Contact", Icon: Mail },
   { href: "/dashboard/settings", label: "Settings", Icon: Settings },
 ];
 
