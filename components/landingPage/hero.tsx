@@ -399,7 +399,7 @@ export function Hero() {
                   className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-[#6C63FF] px-7 py-3.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <span aria-hidden className="absolute inset-0 -translate-x-full bg-[#FFC857] transition-transform duration-500 ease-out group-hover:translate-x-0 group-active:translate-x-0" />
-                  <span className="relative z-10 transition-colors duration-500 group-hover:text-black group-active:text-black">Lihat proyek saya</span>
+                  <span className="relative z-10 transition-colors duration-500 group-hover:text-black group-active:text-black">My Projects</span>
                   <Icon name="arrow" className="relative z-10 h-4 w-4 transition-all duration-500 group-hover:translate-x-1 group-hover:text-black" />
                 </Link>
               </Magnetic>

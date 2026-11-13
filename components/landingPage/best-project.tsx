@@ -1,8 +1,14 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import type { ProjectCategory, ProjectItem, ProjectTab } from "@/lib/data";
+import type { ProjectTab } from "@/lib/data";
+// Daftar tab (dari tabel project_tabs) dan semua proyeknya diambil dari api/projects.
+import { GET as getProjectsRoute } from "@/app/api/projects/route";
 import { BestProjectClient } from "./best-project-client";
+
+/** Maksimal best project per tab/bidang (sama dengan batas di dashboard). */
+const MAX_PER_TAB = 6;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,62 +16,42 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-/** Server component: membaca best project langsung dari Supabase. */
+/** Semua tab + proyeknya dari api/projects (data = daftar tab, tiap tab punya array projects). */
+async function fetchTabs(): Promise<ProjectTab[]> {
+  const call = getProjectsRoute as unknown as (req: NextRequest) => Promise<Response>;
+  const res = await call(new NextRequest("http://localhost/api/projects"));
+  if (!res.ok) throw new Error(`api/projects status ${res.status}`);
+  const json = (await res.json()) as { data?: ProjectTab[] };
+  return Array.isArray(json.data) ? json.data : [];
+}
+
+/** Server component: tab dari api/projects, pilihan best project dari best_projects. */
 async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
   noStore(); // selalu data terbaru
 
   try {
-    const [bestRes, tabsRes, projectsRes, imagesRes] = await Promise.all([
+    const [tabs, bestRes] = await Promise.all([
+      fetchTabs(),
       supabase.from("best_projects").select("project_id").order("position"),
-      supabase.from("project_tabs").select("*").order("sort_order"),
-      supabase.from("projects").select("*"),
-      supabase.from("project_images").select("project_id, src").order("position"),
     ]);
 
-    const error = bestRes.error ?? tabsRes.error ?? projectsRes.error ?? imagesRes.error;
-    if (error) {
-      console.error("[BestProject] gagal membaca data:", error.message);
+    if (bestRes.error) {
+      console.error("[BestProject] gagal membaca best_projects:", bestRes.error.message);
       return [];
     }
 
-    const images = new Map<string, string[]>();
-    for (const img of imagesRes.data ?? []) {
-      images.set(img.project_id, [...(images.get(img.project_id) ?? []), img.src]);
-    }
+    // urutan tampil mengikuti best_projects.position
+    const rank = new Map<string, number>();
+    (bestRes.data ?? []).forEach((b, i) => rank.set(String(b.project_id), i));
 
-    const projects = new Map<string, ProjectItem>(
-      (projectsRes.data ?? []).map((r) => [
-        r.id,
-        {
-          id: r.id,
-          category: r.category as ProjectCategory,
-          title: r.title,
-          type: r.type,
-          role: r.role,
-          tools: r.tools ?? [],
-          desc: r.desc,
-          highlights: r.highlights ?? [],
-          url: r.url ?? undefined,
-          repo: r.repo ?? undefined,
-          images: images.get(r.id) ?? [],
-        },
-      ])
-    );
-
-    // urutan mengikuti best_projects.position
-    const best = (bestRes.data ?? []).flatMap((b) => projects.get(b.project_id) ?? []);
-
-    return (tabsRes.data ?? [])
-      .map((t) => ({
-        id: t.id as ProjectCategory,
-        label: t.label,
-        short: t.short,
-        typeLabel: t.type_label,
-        toolsLabel: t.tools_label,
-        linkLabel: t.link_label ?? undefined,
-        projects: best.filter((p) => p.category === t.id),
-      }))
-      .filter((t) => t.projects.length > 0);
+    // semua tab tetap tampil (juga yang belum punya best project); tiap tab maksimal 6
+    return tabs.map((t) => ({
+      ...t,
+      projects: t.projects
+        .filter((p) => rank.has(String(p.id)))
+        .sort((a, b) => (rank.get(String(a.id)) ?? 0) - (rank.get(String(b.id)) ?? 0))
+        .slice(0, MAX_PER_TAB),
+    }));
   } catch (err) {
     console.error("[BestProject] tidak bisa membaca data", err);
     return [];
@@ -75,7 +61,8 @@ async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
 /** Komponen yang mengakses data (harus berada di dalam <Suspense>) */
 async function BestProjectData() {
   const tabs = await fetchBestProjectTabs();
-  if (tabs.length === 0) return null;
+  // belum ada satu pun best project → bagian ini tidak ditampilkan
+  if (tabs.every((t) => t.projects.length === 0)) return null;
   return <BestProjectClient tabs={tabs} />;
 }
 

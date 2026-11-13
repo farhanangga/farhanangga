@@ -21,15 +21,21 @@ function moveTo(list: Item[], key: string, targetKey: string) {
 /** Dropzone gambar: drag & drop, pratinjau, atur urutan (gambar pertama = cover).
  *  Urutan bisa diubah dengan menyeret gambar (mouse/pen langsung dari gambar, layar sentuh lewat ikon pegangan)
  *  atau dengan tombol panah di dalam gambar.
- *  File dikirim lewat <input type="file" name=...> sesuai urutan di layar. */
+ *  File dikirim lewat <input type="file" name=...> sesuai urutan di layar.
+ *
+ *  Mode satu gambar (max={1}): tidak ada cover / urutan / panah. Memilih atau menjatuhkan
+ *  gambar baru langsung MENGGANTI gambar sebelumnya. */
 export function ImageDropzone({
   max,
   maxSize,
   name = "images",
+  id,
 }: {
   max: number;
   maxSize: number;
   name?: string;
+  /** id untuk tombol dropzone, supaya <label htmlFor> bisa menunjuk ke sini */
+  id?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -37,6 +43,8 @@ export function ImageDropzone({
   const [msg, setMsg] = useState<string | null>(null);
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+
+  const single = max === 1;
 
   const latest = useRef<Item[]>([]);
   const stopDrag = useRef<(() => void) | null>(null);
@@ -63,7 +71,8 @@ export function ImageDropzone({
   }, [dragKey]);
 
   const mb = Math.round(maxSize / 1024 / 1024);
-  const full = items.length >= max;
+  // mode satu gambar tidak pernah "penuh": gambar baru menggantikan yang lama
+  const full = !single && items.length >= max;
 
   /** simpan state + samakan isi <input type=file> dengan urutan di layar */
   const commit = (next: Item[]) => {
@@ -89,6 +98,20 @@ export function ImageDropzone({
       }
       return true;
     });
+
+    if (single) {
+      const file = ok[0];
+      setMsg(problems.length ? problems[0] : null);
+      if (!file) {
+        // dialog dibatalkan / file ditolak: samakan lagi isi input dengan yang tampil
+        commit(items);
+        return;
+      }
+      items.forEach((i) => URL.revokeObjectURL(i.url));
+      commit([{ key: crypto.randomUUID(), file, url: URL.createObjectURL(file) }]);
+      return;
+    }
+
     const room = Math.max(max - items.length, 0);
     if (ok.length > room) {
       problems.push(`Maksimal ${max} gambar`);
@@ -187,7 +210,13 @@ export function ImageDropzone({
     "grid h-6 w-6 place-items-center rounded-full bg-black/55 text-white outline-none backdrop-blur transition hover:bg-black/75 focus-visible:ring-2 focus-visible:ring-white disabled:opacity-30";
 
   const ghostItem = dragKey ? items.find((i) => i.key === dragKey) : undefined;
-  const canDrag = items.length > 1;
+  const canDrag = !single && items.length > 1;
+
+  const title = full
+    ? "Batas gambar tercapai"
+    : single && items.length > 0
+      ? "Tarik gambar ke sini atau klik untuk mengganti"
+      : "Tarik gambar ke sini atau klik untuk memilih";
 
   return (
     <div>
@@ -196,7 +225,7 @@ export function ImageDropzone({
         type="file"
         name={name}
         accept="image/*"
-        multiple
+        multiple={!single}
         tabIndex={-1}
         aria-hidden
         className="sr-only"
@@ -204,6 +233,7 @@ export function ImageDropzone({
       />
 
       <button
+        id={id}
         type="button"
         disabled={full}
         onClick={() => inputRef.current?.click()}
@@ -226,9 +256,9 @@ export function ImageDropzone({
         <span className="grid h-11 w-11 place-items-center rounded-2xl text-white" style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}>
           <ImagePlus size={20} />
         </span>
-        <span className="text-sm font-medium">{full ? "Batas gambar tercapai" : "Tarik gambar ke sini atau klik untuk memilih"}</span>
+        <span className="text-sm font-medium">{title}</span>
         <span className="text-xs text-[color:var(--fg-muted)]">
-          PNG, JPG, WEBP · maks {mb} MB · {items.length}/{max}
+          PNG, JPG, WEBP · maks {mb} MB{single ? "" : ` · ${items.length}/${max}`}
         </span>
       </button>
 
@@ -239,21 +269,27 @@ export function ImageDropzone({
       )}
 
       {items.length > 0 && (
-        <ul className="mt-3 grid select-none grid-cols-3 gap-2.5">
+        <ul className={`mt-3 select-none ${single ? "grid grid-cols-1" : "grid grid-cols-3 gap-2.5"}`}>
           {items.map((it, i) => (
             <li
               key={it.key}
               data-card
               data-key={it.key}
               onPointerDown={(e) => startPointer(e, it.key)}
-              className={`group relative aspect-square overflow-hidden rounded-xl bg-[color:var(--chip)] ring-1 ring-[color:var(--line)] transition-[opacity,box-shadow] ${
-                canDrag ? "cursor-grab" : ""
-              } ${dragKey === it.key ? "opacity-40 !ring-2 !ring-[#5A64D8]" : ""}`}
+              className={`group relative overflow-hidden rounded-xl bg-[color:var(--chip)] ring-1 ring-[color:var(--line)] transition-[opacity,box-shadow] ${
+                single ? "mx-auto aspect-[4/5] w-44 max-w-full" : "aspect-square"
+              } ${canDrag ? "cursor-grab" : ""} ${dragKey === it.key ? "opacity-40 !ring-2 !ring-[#5A64D8]" : ""}`}
+              style={single ? { background: "radial-gradient(ellipse at top, #0A0A6B 0%, #02020F 70%)" } : undefined}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.url} alt={`Pratinjau ${it.file.name}`} draggable={false} className="h-full w-full object-cover" />
+              <img
+                src={it.url}
+                alt={`Pratinjau ${it.file.name}`}
+                draggable={false}
+                className={`h-full w-full ${single ? "object-contain object-bottom" : "object-cover"}`}
+              />
 
-              {i === 0 && (
+              {!single && i === 0 && (
                 <span className="absolute left-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
                   Cover
                 </span>
@@ -263,26 +299,28 @@ export function ImageDropzone({
                 <X size={13} />
               </button>
 
-              <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Geser ke kiri" className={small}>
-                  <ChevronLeft size={13} />
-                </button>
+              {!single && (
+                <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Geser ke kiri" className={small}>
+                    <ChevronLeft size={13} />
+                  </button>
 
-                {canDrag && (
-                  <span
-                    data-handle
-                    title="Seret untuk mengatur urutan"
-                    aria-hidden
-                    className="grid h-6 w-6 touch-none cursor-grab place-items-center rounded-full bg-black/55 text-white backdrop-blur"
-                  >
-                    <GripVertical size={13} />
-                  </span>
-                )}
+                  {canDrag && (
+                    <span
+                      data-handle
+                      title="Seret untuk mengatur urutan"
+                      aria-hidden
+                      className="grid h-6 w-6 touch-none cursor-grab place-items-center rounded-full bg-black/55 text-white backdrop-blur"
+                    >
+                      <GripVertical size={13} />
+                    </span>
+                  )}
 
-                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Geser ke kanan" className={small}>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
+                  <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Geser ke kanan" className={small}>
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -14,23 +14,40 @@ import {
 } from "framer-motion";
 import { Award, Check, ChevronDown, MapPin, Trophy, Users, type LucideIcon } from "lucide-react";
 import {
-  certs,
-  employmentLabel,
-  experiences,
   formatPeriod,
-  orgs,
   type EmploymentType,
-  type Experience,
+  type Experience as ExperienceData,
 } from "@/lib/data";
 import { mono } from "@/components/fonts";
-import { CountUp, EASE, Heading, Tilt } from "@/components/ui";
+import { EASE, Heading, Tilt } from "@/components/ui";
+
+/* ───────────── Tipe data dari Supabase (dipakai juga oleh route) ───────────── */
+
+export type Org = {
+  id: string;
+  position: number;
+  jabatan: string;
+  lembaga: string;
+  periode: string;
+};
+
+export type AwardData = {
+  id: string;
+  position: number;
+  judul: string;
+  penerbit: string;
+  tahun: string;
+};
+
+export type LandingData = {
+  experiences: ExperienceData[];
+  orgs: Org[];
+  awards: AwardData[];
+};
 
 /* ───────────── Helper ───────────── */
 
 const pad = (n: number) => String(n).padStart(2, "0");
-
-/** Semua tools unik dari data pengalaman (ditulis eksplisit di data.ts) */
-const STACK = Array.from(new Set(experiences.flatMap((e) => e.tools ?? [])));
 
 /** Warna badge status pekerjaan */
 const TYPE_STYLE: Record<EmploymentType, string> = {
@@ -38,29 +55,32 @@ const TYPE_STYLE: Record<EmploymentType, string> = {
   internship: "bg-[#6C63FF]/20 text-[#A9A4FF]",
   fulltime: "bg-white/10 text-white/70",
 };
+const TYPE_LABEL: Record<EmploymentType, string> = {
+  freelance: "Freelance",
+  internship: "Internship",
+  fulltime: "Full-time",
+};
+const TYPE_FALLBACK = "bg-white/10 text-white/70";
 
-type Row = { title: string; sub: string; tag: string; Icon: LucideIcon };
+type Row = { key: string; title: string; sub: string; tag: string; Icon: LucideIcon };
 
-/** "Staf Divisi X, DPM UPI Cibiru (2024 – 2025)" -> judul, sub, tahun */
-function parseOrg(s: string): Row {
-  const m = s.match(/^(.*?),\s*(.*?)\s*\((.*?)\)\s*$/);
-  return m
-    ? { title: m[1], sub: m[2], tag: m[3], Icon: Users }
-    : { title: s, sub: "", tag: "", Icon: Users };
-}
+/** landing_organization -> baris kartu */
+const orgToRow = (o: Org): Row => ({
+  key: o.id,
+  title: o.jabatan,
+  sub: o.lembaga,
+  tag: o.periode,
+  Icon: Users,
+});
 
-/** "Dicoding: Belajar Dasar AI" / "Juara 1 Sayembara ..., DPM UPI Cibiru" */
-function parseCert(s: string): Row {
-  const Ico = /^juara/i.test(s) ? Trophy : Award;
-  if (s.includes(":")) {
-    const [a, ...r] = s.split(":");
-    return { title: r.join(":").trim(), sub: a.trim(), tag: "", Icon: Ico };
-  }
-  const idx = s.indexOf(", ");
-  return idx > -1
-    ? { title: s.slice(0, idx), sub: s.slice(idx + 2), tag: "", Icon: Ico }
-    : { title: s, sub: "", tag: "", Icon: Ico };
-}
+/** landing_award -> baris kartu */
+const awardToRow = (a: AwardData): Row => ({
+  key: a.id,
+  title: a.judul,
+  sub: a.penerbit,
+  tag: a.tahun,
+  Icon: /^juara/i.test(a.judul) ? Trophy : Award,
+});
 
 /* ───────────── Kartu dengan sorotan kursor ───────────── */
 
@@ -125,7 +145,7 @@ function ExperienceItem({
   open,
   onToggle,
 }: {
-  e: Experience;
+  e: ExperienceData;
   i: number;
   total: number;
   open: boolean;
@@ -229,7 +249,9 @@ function ExperienceItem({
                   </span>
                 )}
                 {e.type && (
-                  <span className={`${badge} ${TYPE_STYLE[e.type]}`}>{employmentLabel[e.type]}</span>
+                  <span className={`${badge} ${TYPE_STYLE[e.type] ?? TYPE_FALLBACK}`}>
+                    {TYPE_LABEL[e.type] ?? e.type}
+                  </span>
                 )}
               </span>
               <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-white/60 sm:text-sm">
@@ -315,7 +337,7 @@ function ExperienceItem({
   );
 }
 
-function Timeline() {
+function Timeline({ items }: { items: ExperienceData[] }) {
   const ref = useRef<HTMLOListElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 70%", "end 55%"] });
   const line = useSpring(scrollYProgress, { stiffness: 100, damping: 25, mass: 0.4 });
@@ -340,12 +362,12 @@ function Timeline() {
         className="absolute left-[6px] z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_18px_4px_rgba(255,200,87,0.7)] md:left-[178px]"
       />
 
-      {experiences.map((e, i) => (
+      {items.map((e, i) => (
         <ExperienceItem
           key={e.id}
           e={e}
           i={i}
-          total={experiences.length}
+          total={items.length}
           open={open === i}
           onToggle={() => setOpen(open === i ? -1 : i)}
         />
@@ -414,7 +436,7 @@ function InfoCard({
         >
           {rows.map((r) => (
             <motion.li
-              key={r.title + r.sub}
+              key={r.key}
               variants={slideX}
               whileHover={{ x: 6 }}
               className="flex items-start gap-3 rounded-xl px-1.5 py-2.5 transition-colors hover:bg-white/[0.04] sm:px-2 sm:py-3"
@@ -462,6 +484,26 @@ function InfoCard({
 /* ───────────── Section ───────────── */
 
 export function Experience() {
+  const [data, setData] = useState<LandingData>({ experiences: [], orgs: [], awards: [] });
+  const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
+  const { experiences, orgs, awards } = data;
+
+  // ambil dari route /api/landingPage/experience -> Supabase
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/landingPage/experience", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j: { data: LandingData }) => {
+        if (!alive) return;
+        setData(j.data);
+        setStatus("ok");
+      })
+      .catch(() => alive && setStatus("error"));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -469,12 +511,8 @@ export function Experience() {
   });
   const bgX = useTransform(scrollYProgress, [0, 1], ["20%", "-45%"]);
 
-  const stats = [
-    { label: "Posisi", to: experiences.length },
-    { label: "Tools dipakai", to: STACK.length },
-    { label: "Organisasi", to: orgs.length },
-    { label: "Sertifikat & penghargaan", to: certs.length },
-  ];
+  const orgRows = orgs.map(orgToRow);
+  const awardRows = awards.map(awardToRow);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -519,65 +557,50 @@ export function Experience() {
         <div className="relative mx-auto max-w-[1200px] px-4 pb-20 sm:px-10 sm:pb-28">
           <Heading sub="Perjalanan kerja, organisasi, dan penghargaan">Pengalaman kerja</Heading>
 
-          {/* statistik */}
-          <motion.ul
-            className="mt-8 grid grid-cols-2 gap-2.5 sm:mt-10 sm:gap-3 md:grid-cols-4"
-            variants={stagger(0.1)}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            {stats.map((s) => (
-              <motion.li
-                key={s.label}
-                variants={rise}
-                whileHover={{ y: -4, borderColor: "rgba(255,200,87,0.5)" }}
-                className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur sm:p-5"
-              >
-                <span
-                  className={`${mono.className} block text-3xl font-bold text-[#FFC857] sm:text-4xl`}
-                >
-                  <CountUp to={s.to} />
-                </span>
-                <span className="mt-1 block text-[13px] leading-snug text-white/55 sm:text-sm">
-                  {s.label}
-                </span>
-              </motion.li>
-            ))}
-          </motion.ul>
-
-          {/* timeline */}
-          <div className="mt-10 sm:mt-14">
-            <Timeline />
-          </div>
+          {status !== "ok" && (
+            <p className="mt-8 text-center text-sm text-white/50 sm:mt-10">
+              {status === "loading" ? "Memuat data..." : "Gagal memuat data pengalaman."}
+            </p>
+          )}
+          {experiences.length > 0 && (
+            <div className="mt-8 sm:mt-10">
+              <Timeline items={experiences} />
+            </div>
+          )}
 
           {/* organisasi & sertifikat */}
-          <motion.div
-            className="mt-2 grid gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2"
-            variants={stagger(0.15)}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            <motion.div variants={rise} className="min-w-0">
-              <InfoCard
-                title="Organisasi"
-                Icon={Users}
-                hex="#F25C5C"
-                rgb="242,92,92"
-                rows={orgs.map(parseOrg)}
-              />
+          {(orgRows.length > 0 || awardRows.length > 0) && (
+            <motion.div
+              className="mt-2 grid gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2"
+              variants={stagger(0.15)}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: "-60px" }}
+            >
+              {orgRows.length > 0 && (
+                <motion.div variants={rise} className="min-w-0">
+                  <InfoCard
+                    title="Organisasi"
+                    Icon={Users}
+                    hex="#F25C5C"
+                    rgb="242,92,92"
+                    rows={orgRows}
+                  />
+                </motion.div>
+              )}
+              {awardRows.length > 0 && (
+                <motion.div variants={rise} className="min-w-0">
+                  <InfoCard
+                    title="Sertifikat dan penghargaan"
+                    Icon={Award}
+                    hex="#FFC857"
+                    rgb="255,200,87"
+                    rows={awardRows}
+                  />
+                </motion.div>
+              )}
             </motion.div>
-            <motion.div variants={rise} className="min-w-0">
-              <InfoCard
-                title="Sertifikat dan penghargaan"
-                Icon={Award}
-                hex="#FFC857"
-                rgb="255,200,87"
-                rows={certs.map(parseCert)}
-              />
-            </motion.div>
-          </motion.div>
+          )}
         </div>
       </section>
     </MotionConfig>

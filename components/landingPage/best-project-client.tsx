@@ -18,8 +18,23 @@ import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/proje
 
 /* ───────────── Konfigurasi ───────────── */
 
-// pola lebar card di layar besar (berulang tiap 6 item): 2+1 / 1+2 / 2+1
-const SPANS = ["lg:col-span-2", "", "", "lg:col-span-2", "lg:col-span-2", ""];
+// Pola lebar card di layar besar (3 kolom) menurut jumlah proyek di tab (1–6).
+// Selalu mengisi penuh baris, jadi tidak ada lubang walau proyeknya kurang dari 6.
+const LG_SPANS: Record<number, string[]> = {
+  1: ["lg:col-span-3"],
+  2: ["lg:col-span-2", ""],
+  3: ["lg:col-span-2", "", "lg:col-span-3"],
+  4: ["lg:col-span-2", "", "", "lg:col-span-2"],
+  5: ["lg:col-span-2", "", "", "lg:col-span-2", "lg:col-span-3"],
+  6: ["lg:col-span-2", "", "", "lg:col-span-2", "lg:col-span-2", ""],
+};
+
+function layoutFor(i: number, n: number): { spanClass: string; big: boolean } {
+  const lg = (LG_SPANS[Math.min(Math.max(n, 1), 6)] ?? [])[i] ?? "";
+  // layar sedang (2 kolom): kartu terakhir yang sendirian mengisi satu baris penuh
+  const sm = n % 2 === 1 && i === n - 1 ? "sm:col-span-2" : "";
+  return { spanClass: `${sm} ${lg}`.trim(), big: lg !== "" };
+}
 
 /* ───────────── Animasi (tidak bergantung pada data) ───────────── */
 
@@ -55,25 +70,26 @@ function ProjectCard({
   index,
   theme,
   spanClass,
+  big,
   onOpen,
 }: {
   p: ProjectItem;
   index: number;
   theme: Theme;
   spanClass: string;
+  big: boolean;
   onOpen: (rect: DOMRect) => void;
 }) {
-  const big = spanClass !== "";
   const extraTools = p.tools.length - 3;
 
   // posisi kursor 0..1, dipakai untuk tilt, parallax, dan cahaya
   const mx = useMotionValue(0.5);
   const my = useMotionValue(0.5);
   const spring = { stiffness: 170, damping: 18 };
-  const rotateX = useSpring(useTransform(my, [0, 1], [6, -6]), spring);
-  const rotateY = useSpring(useTransform(mx, [0, 1], [-6, 6]), spring);
-  const px = useSpring(useTransform(mx, [0, 1], [12, -12]), spring);
-  const py = useSpring(useTransform(my, [0, 1], [9, -9]), spring);
+  const rotateX = useSpring(useTransform(my, [0, 1], [5, -5]), spring);
+  const rotateY = useSpring(useTransform(mx, [0, 1], [-5, 5]), spring);
+  const px = useSpring(useTransform(mx, [0, 1], [8, -8]), spring);
+  const py = useSpring(useTransform(my, [0, 1], [6, -6]), spring);
   const gx = useTransform(mx, (v) => `${v * 100}%`);
   const gy = useTransform(my, (v) => `${v * 100}%`);
   const borderGlow = useMotionTemplate`radial-gradient(240px circle at ${gx} ${gy}, rgba(${theme.rgb},1), transparent 70%)`;
@@ -129,7 +145,7 @@ function ProjectCard({
 
             <span className="relative block h-full overflow-hidden rounded-[15px] bg-[#0C0C20]">
               {/* gambar dengan parallax */}
-              <motion.span variants={imgV} style={{ x: px, y: py }} className="absolute -inset-5 block">
+              <motion.span variants={imgV} style={{ x: px, y: py }} className="absolute -inset-4 block">
                 <Shot
                   src={p.images[0] ?? ""}
                   alt={`Sampul proyek ${p.title}`}
@@ -138,8 +154,8 @@ function ProjectCard({
                 />
               </motion.span>
 
-              {/* gradient + cahaya + kilau */}
-              <span className="absolute inset-0 bg-gradient-to-t from-[#0C0C20] via-[#0C0C20]/60 to-[#0C0C20]/5" />
+              {/* gradient (lebih pekat di bawah agar teks selalu terbaca) + cahaya + kilau */}
+              <span className="absolute inset-0 bg-gradient-to-t from-[#0C0C20] from-15% via-[#0C0C20]/85 via-45% to-[#0C0C20]/0" />
               <motion.span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
@@ -169,7 +185,7 @@ function ProjectCard({
                 <span className="flex items-center gap-2">
                   <span className="h-px w-6" style={{ background: theme.hex }} />
                   <span
-                    className={`${mono.className} text-[11px] uppercase tracking-wider`}
+                    className={`${mono.className} truncate text-[11px] uppercase tracking-wider`}
                     style={{ color: theme.hex }}
                   >
                     {p.type}
@@ -183,7 +199,7 @@ function ProjectCard({
                   {p.title}
                 </motion.span>
 
-                <span className="mt-2 line-clamp-2 block max-w-[56ch] text-sm leading-relaxed text-white/65">
+                <span className="mt-2 line-clamp-2 block max-w-[56ch] text-sm leading-relaxed text-white/75">
                   {p.desc}
                 </span>
 
@@ -221,14 +237,16 @@ function ProjectCard({
 
 /* ───────────── Section ───────────── */
 
-/** Data tab dikirim dari server component (best-project.tsx), yang membacanya dari Supabase. */
+/** Data tab dikirim dari server component (best-project.tsx): tab dari api/projects, isinya best project. */
 export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
-  const [tabId, setTabId] = useState(tabs[0].id);
+  // buka tab pertama yang sudah punya best project
+  const [tabId, setTabId] = useState(() => (tabs.find((t) => t.projects.length > 0) ?? tabs[0]).id);
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
 
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
   const theme = themeOf(tab.id);
   const totalProjects = tabs.reduce((sum, t) => sum + t.projects.length, 0);
+  const n = tab.projects.length;
 
   // modal bersama menerima daftar { p, tab }
   const entries = useMemo(() => tab.projects.map((p) => ({ p, tab })), [tab]);
@@ -272,7 +290,7 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
         <div className="relative mx-auto max-w-[1200px] px-5 pb-24 sm:px-10 sm:pb-28">
           <Heading sub="Pilih bidang, lalu klik proyek untuk melihat detailnya">Proyek terbaik</Heading>
 
-          {/* tab role */}
+          {/* tab role: semua bidang dari project_tabs */}
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div
               role="tablist"
@@ -289,7 +307,10 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
                     role="tab"
                     type="button"
                     aria-selected={on}
-                    onClick={() => setTabId(t.id)}
+                    onClick={() => {
+                      setSel(null);
+                      setTabId(t.id);
+                    }}
                     className="relative z-0 flex items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/60 sm:px-5"
                     style={{ color: on ? th.ink : "rgba(255,255,255,0.6)" }}
                   >
@@ -314,34 +335,52 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
 
             <p className="text-sm text-white/45">
               <span className={mono.className} style={{ color: theme.hex }}>
-                {pad(tab.projects.length)}
+                {pad(n)}
               </span>{" "}
-              proyek di bidang ini · {totalProjects} total
+              proyek terbaik di bidang ini · {totalProjects} total
             </p>
           </div>
 
-          {/* grid card */}
+          {/* grid card, atau pesan bila bidang ini belum punya best project */}
           <AnimatePresence mode="wait">
-            <motion.ul
-              key={tab.id}
-              role="tabpanel"
-              className="mt-8 grid gap-5 sm:grid-cols-2 lg:auto-rows-[380px] lg:grid-cols-3 lg:grid-flow-dense"
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
-              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
-            >
-              {tab.projects.map((p, i) => (
-                <ProjectCard
-                  key={p.id}
-                  p={p}
-                  index={i}
-                  theme={theme}
-                  spanClass={SPANS[i % SPANS.length]}
-                  onOpen={(rect) => setSel({ index: i, rect })}
-                />
-              ))}
-            </motion.ul>
+            {n === 0 ? (
+              <motion.div
+                key={`${tab.id}-kosong`}
+                role="tabpanel"
+                className="mt-8 grid place-items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-20 text-center"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+              >
+                <p className="text-white/70">Belum ada proyek terbaik di bidang {tab.label}.</p>
+                <p className="mt-1 text-sm text-white/40">Segera hadir.</p>
+              </motion.div>
+            ) : (
+              <motion.ul
+                key={tab.id}
+                role="tabpanel"
+                className="mt-8 grid gap-5 sm:grid-cols-2 lg:auto-rows-[380px] lg:grid-cols-3 lg:grid-flow-dense"
+                initial="hidden"
+                animate="show"
+                exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+              >
+                {tab.projects.map((p, i) => {
+                  const { spanClass, big } = layoutFor(i, n);
+                  return (
+                    <ProjectCard
+                      key={p.id}
+                      p={p}
+                      index={i}
+                      theme={theme}
+                      spanClass={spanClass}
+                      big={big}
+                      onOpen={(rect) => setSel({ index: i, rect })}
+                    />
+                  );
+                })}
+              </motion.ul>
+            )}
           </AnimatePresence>
         </div>
 
