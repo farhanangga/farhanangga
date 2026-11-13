@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import type { IconType } from "react-icons";
 import {
@@ -13,16 +14,22 @@ import {
 } from "react-icons/si";
 import { FaHtml5, FaCss3Alt, FaJava } from "react-icons/fa";
 import { VscVscode } from "react-icons/vsc";
-import { marqueeTools, toolGroups } from "@/lib/data";
 import { mono } from "@/components/fonts";
 import { EASE, Heading, Tilt } from "@/components/ui";
+
+/* ------------------------------------------------------------------ */
+/*  Tipe data dari API  (/api/landingPage/tools)                       */
+/* ------------------------------------------------------------------ */
+type ToolGroup = { id: number; title: string; items: string[] };
+type ToolsResponse = { groups: ToolGroup[]; marquee: string[] };
 
 /* ------------------------------------------------------------------ */
 /*  Brand map: logo + warna iconic. Key = nama tool (huruf kecil,      */
 /*  tanpa spasi/titik/strip). Brand gelap (Next, GitHub, dll) dibuat   */
 /*  putih supaya terlihat di background gelap.                         */
+/*  `badge` = kotak berisi inisial (untuk tool tanpa icon, mis. Adobe) */
 /* ------------------------------------------------------------------ */
-type Brand = { icon: IconType; color: string };
+type Brand = { icon?: IconType; badge?: string; color: string };
 
 const brands: Record<string, Brand> = {
   react: { icon: SiReact, color: "#61DAFB" },
@@ -55,7 +62,7 @@ const brands: Record<string, Brand> = {
   expressjs: { icon: SiExpress, color: "#FFFFFF" },
   nestjs: { icon: SiNestjs, color: "#E0234E" },
   laravel: { icon: SiLaravel, color: "#FF2D20" },
-  php: { icon: SiPHPFix(), color: "#777BB4" },
+  php: { icon: SiPhp, color: "#777BB4" },
   python: { icon: SiPython, color: "#3776AB" },
   java: { icon: FaJava, color: "#ED8B00" },
   kotlin: { icon: SiKotlin, color: "#7F52FF" },
@@ -86,12 +93,14 @@ const brands: Record<string, Brand> = {
   trello: { icon: SiTrello, color: "#0052CC" },
   vscode: { icon: VscVscode, color: "#007ACC" },
   visualstudiocode: { icon: VscVscode, color: "#007ACC" },
-};
 
-// php icon helper (SiPhp)
-function SiPHPFix(): IconType {
-  return SiPhp;
-}
+  /* Graphic Design */
+  lightroom: { badge: "Lr", color: "#31A8FF" },
+  photoshop: { badge: "Ps", color: "#31A8FF" },
+  canva: { badge: "Ca", color: "#00C4CC" },
+  coreldraw: { badge: "Cd", color: "#2BB673" },
+  pixellab: { badge: "Px", color: "#FFB020" },
+};
 
 const FALLBACK = "#6C63FF";
 const getBrand = (name: string): Brand | null =>
@@ -99,12 +108,23 @@ const getBrand = (name: string): Brand | null =>
 
 type CSSVars = React.CSSProperties & { "--c": string };
 
-/* Logo bulat: icon brand, atau huruf awal kalau tool belum ada di map */
+/* Logo: icon brand, badge inisial berwarna brand, atau huruf awal (fallback) */
 function Logo({ name, className = "" }: { name: string; className?: string }) {
   const b = getBrand(name);
-  if (b) {
+  if (b?.icon) {
     const Icon = b.icon;
     return <Icon className={className} style={{ color: b.color }} aria-hidden />;
+  }
+  if (b?.badge) {
+    return (
+      <span
+        aria-hidden
+        className={`${className} grid place-items-center rounded-md text-[0.62em] font-extrabold leading-none text-[#0B0B14]`}
+        style={{ background: b.color }}
+      >
+        {b.badge}
+      </span>
+    );
   }
   return (
     <span
@@ -121,27 +141,31 @@ const colorOf = (name: string) => getBrand(name)?.color ?? FALLBACK;
 
 /* ------------------------------ Marquee ------------------------------ */
 /**
- * offset  : geser awal daftar supaya tiap baris isinya berbeda
- * secPerChip : detik per chip -> makin besar makin LAMBAT (kecepatan konsisten
- *              berapa pun jumlah tool-nya)
- * className : mis. "sm:hidden" untuk baris yang hanya tampil di mobile
+ * tools      : daftar nama tool (dari API)
+ * offset     : geser awal daftar supaya tiap baris isinya berbeda
+ * secPerChip : detik per chip -> makin besar makin LAMBAT
+ * className  : mis. "sm:hidden" untuk baris yang hanya tampil di mobile
  */
 function Marquee({
+  tools,
   reverse = false,
   offset = 0,
   secPerChip = 4.5,
   className = "",
 }: {
+  tools: string[];
   reverse?: boolean;
   offset?: number;
   secPerChip?: number;
   className?: string;
 }) {
-  const n = marqueeTools.length;
-  const rot = n ? offset % n : 0;
-  const rotated = [...marqueeTools.slice(rot), ...marqueeTools.slice(0, rot)];
+  const n = tools.length;
+  if (!n) return null;
+
+  const rot = offset % n;
+  const rotated = [...tools.slice(rot), ...tools.slice(0, rot)];
   const base = reverse ? rotated.reverse() : rotated;
-  const items = [...base, ...base, ...base, ...base]; // 2 set identik -> loop mulus
+  const items = [...base, ...base, ...base, ...base]; // set identik -> loop mulus
   const duration = Math.max(60, n * 2 * secPerChip);
 
   return (
@@ -175,7 +199,42 @@ const chipAnim: Variants = {
   show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 20 } },
 };
 
+/* Skeleton saat data masih dimuat */
+function GroupSkeleton() {
+  return (
+    <div className="h-44 animate-pulse rounded-2xl border border-white/10 bg-[#14142B]" />
+  );
+}
+
 export function Tools() {
+  const [groups, setGroups] = useState<ToolGroup[]>([]);
+  const [marqueeTools, setMarqueeTools] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch("/api/landingPage/tools", {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Gagal memuat tools (${res.status})`);
+        const json = (await res.json()) as ToolsResponse;
+        setGroups(json.groups ?? []);
+        setMarqueeTools(json.marquee ?? []);
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        setError((e as Error).message);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className="relative overflow-hidden pb-20 sm:pb-28">
       <style>{`
@@ -199,68 +258,79 @@ export function Tools() {
         <Heading>Tools yang saya kuasai</Heading>
       </div>
 
+      {/* Marquee: desktop 2 baris, mobile 4 baris (baris 3 & 4 hanya di mobile) */}
       <div className="relative mt-8 space-y-2.5 sm:mt-10 sm:space-y-3">
-        {/* Desktop: 2 baris. Mobile: 4 baris (baris 3 & 4 disembunyikan di sm ke atas) */}
-        <Marquee secPerChip={4.5} />
-        <Marquee reverse secPerChip={5} />
-        <Marquee offset={Math.floor(marqueeTools.length / 3)} secPerChip={5.5} className="sm:hidden" />
-        <Marquee reverse offset={Math.floor((marqueeTools.length * 2) / 3)} secPerChip={6} className="sm:hidden" />
+        <Marquee tools={marqueeTools} secPerChip={4.5} />
+        <Marquee tools={marqueeTools} reverse secPerChip={5} />
+        <Marquee tools={marqueeTools} offset={Math.floor(marqueeTools.length / 3)} secPerChip={5.5} className="sm:hidden" />
+        <Marquee tools={marqueeTools} reverse offset={Math.floor((marqueeTools.length * 2) / 3)} secPerChip={6} className="sm:hidden" />
       </div>
 
       <div className="relative mx-auto mt-10 grid max-w-[1200px] gap-4 px-5 sm:mt-14 sm:grid-cols-2 sm:gap-5 sm:px-10">
-        {toolGroups.map((g, gi) => {
-          const accent = g.items.slice(0, 4).map(colorOf);
-          const gradient = `linear-gradient(90deg, ${accent.join(", ")})`;
-          return (
-            <motion.div
-              key={g.title}
-              initial={{ opacity: 0, scale: 0.92, y: 30 }}
-              whileInView={{ opacity: 1, scale: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.7, delay: (gi % 2) * 0.1, ease: EASE }}
-            >
-              <Tilt className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-[#14142B] p-5 sm:p-6">
-                {/* garis aksen warna brand */}
-                <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: gradient }} />
-                {/* glow lembut dari warna brand pertama */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-25 blur-3xl"
-                  style={{ background: accent[0] }}
-                />
+        {loading &&
+          Array.from({ length: 4 }).map((_, i) => <GroupSkeleton key={i} />)}
 
-                <div className="relative mb-4 flex items-center justify-between gap-3 sm:mb-5">
-                  <h3 className={`${mono.className} text-base font-semibold sm:text-lg`}>{g.title}</h3>
-                  <span className={`${mono.className} rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs text-white/70`}>
-                    {g.items.length}
-                  </span>
-                </div>
+        {!loading && error && (
+          <p className={`${mono.className} col-span-full text-center text-sm text-white/60`}>
+            {error}
+          </p>
+        )}
 
-                <motion.ul
-                  variants={list}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={{ once: true, margin: "-40px" }}
-                  className="relative flex flex-wrap gap-2 sm:gap-2.5"
-                >
-                  {g.items.map((t) => (
-                    <motion.li
-                      key={t}
-                      variants={chipAnim}
-                      whileHover={{ scale: 1.08, y: -3 }}
-                      whileTap={{ scale: 0.94 }}
-                      style={{ "--c": colorOf(t) } as CSSVars}
-                      className="chip flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] py-1.5 pl-2.5 pr-3.5 text-[13px] sm:py-2 sm:pl-3 sm:pr-4 sm:text-sm"
-                    >
-                      <Logo name={t} className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-                      {t}
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              </Tilt>
-            </motion.div>
-          );
-        })}
+        {!loading &&
+          !error &&
+          groups.map((g, gi) => {
+            const accent = g.items.slice(0, 4).map(colorOf);
+            const gradient = `linear-gradient(90deg, ${accent.join(", ")})`;
+            return (
+              <motion.div
+                key={g.id}
+                initial={{ opacity: 0, scale: 0.92, y: 30 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.7, delay: (gi % 2) * 0.1, ease: EASE }}
+              >
+                <Tilt className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-[#14142B] p-5 sm:p-6">
+                  {/* garis aksen warna brand */}
+                  <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: gradient }} />
+                  {/* glow lembut dari warna brand pertama */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-25 blur-3xl"
+                    style={{ background: accent[0] ?? FALLBACK }}
+                  />
+
+                  <div className="relative mb-4 flex items-center justify-between gap-3 sm:mb-5">
+                    <h3 className={`${mono.className} text-base font-semibold sm:text-lg`}>{g.title}</h3>
+                    <span className={`${mono.className} rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs text-white/70`}>
+                      {g.items.length}
+                    </span>
+                  </div>
+
+                  <motion.ul
+                    variants={list}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, margin: "-40px" }}
+                    className="relative flex flex-wrap gap-2 sm:gap-2.5"
+                  >
+                    {g.items.map((t) => (
+                      <motion.li
+                        key={t}
+                        variants={chipAnim}
+                        whileHover={{ scale: 1.08, y: -3 }}
+                        whileTap={{ scale: 0.94 }}
+                        style={{ "--c": colorOf(t) } as CSSVars}
+                        className="chip flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] py-1.5 pl-2.5 pr-3.5 text-[13px] sm:py-2 sm:pl-3 sm:pr-4 sm:text-sm"
+                      >
+                        <Logo name={t} className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+                        {t}
+                      </motion.li>
+                    ))}
+                  </motion.ul>
+                </Tilt>
+              </motion.div>
+            );
+          })}
       </div>
     </section>
   );

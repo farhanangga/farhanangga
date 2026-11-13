@@ -10,6 +10,9 @@ import { BestProjectClient } from "./best-project-client";
 /** Maksimal best project per tab/bidang (sama dengan batas di dashboard). */
 const MAX_PER_TAB = 6;
 
+/** Palet yang sama dengan daftar role (Software, UI/UX, Photography, Graphic). */
+const ROLE_COLORS = ["#6366F1", "#F25C5C", "#FFC857", "#34D399"] as const;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -70,17 +73,37 @@ async function BestProjectData() {
 function BestProjectSkeleton() {
   return (
     <section className="mx-auto max-w-[1200px] px-5 pb-24 sm:px-10 sm:pb-28">
-      <div className="h-10 w-64 animate-pulse rounded-lg bg-white/10" />
-      <div className="mt-8 h-12 w-full max-w-md animate-pulse rounded-full bg-white/[0.06]" />
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
+      {/* judul */}
+      <div
+        className="h-10 w-64 animate-pulse rounded-lg"
+        style={{ backgroundColor: `${ROLE_COLORS[0]}33` }}
+      />
+
+      {/* tab: satu pil per warna role */}
+      <div className="mt-8 flex w-full max-w-md gap-3">
+        {ROLE_COLORS.map((color) => (
           <div
-            key={i}
-            className={`h-[360px] animate-pulse rounded-2xl bg-[#14142B] sm:h-[380px] ${
-              i === 0 || i === 3 || i === 4 ? "lg:col-span-2" : ""
-            }`}
+            key={color}
+            className="h-12 flex-1 animate-pulse rounded-full"
+            style={{ backgroundColor: `${color}26` }}
           />
         ))}
+      </div>
+
+      {/* kartu proyek */}
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => {
+          const color = ROLE_COLORS[i % ROLE_COLORS.length];
+          return (
+            <div
+              key={i}
+              className={`h-[360px] animate-pulse rounded-2xl border-t-2 bg-[#14142B] sm:h-[380px] ${
+                i === 0 || i === 3 || i === 4 ? "lg:col-span-2" : ""
+              }`}
+              style={{ borderTopColor: `${color}80` }}
+            />
+          );
+        })}
       </div>
     </section>
   );

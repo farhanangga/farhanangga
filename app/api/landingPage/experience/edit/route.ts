@@ -1,62 +1,58 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { getSession } from "@/lib/session";
-
-// GET  → data mentah 3 tabel (landing_experience, landing_organization, landing_award) untuk dashboard (hanya admin)
-// POST → simpan satu bagian dari dashboard. Field "section" = experience | organization | award.
-//        Baris dikirim dengan nama "<prefix>.<indeks>.<field>" (prefix: exp / org / awd).
+// app/api/landingPage/experience/edit/route.ts
 //
-// Aturan simpan (aman, tidak menghapus massal):
-// - baris yang punya id → diperbarui; baris tanpa id (baru) → ditambahkan; baris kosong tanpa id → diabaikan
-// - baris dihapus HANYA bila kotak "hapus" dicentang
-// - kolom position dibuat ulang menurut field "urutan" (lalu urutan baris di form)
-const BACK = "/dashboard/landingPage";
-const MAX_ROWS = 30; // baris tersimpan per bagian
-const MAX_INDEX = 80; // batas wajar indeks field agar request aneh ditolak
-const TYPES = ["freelance", "internship", "fulltime"];
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// GET  -> { data: { experiences, orgs, awards } }   (baca; konten memang publik di website)
+// POST -> body JSON { section: "experience" | "organization" | "award", items: [...] }
+//         Menyinkronkan SATU tabel dengan daftar yang dikirim:
+//           - item dengan id yang sudah ada  -> diperbarui
+//           - item tanpa id                  -> ditambahkan
+//           - baris di database yang tidak ada di daftar -> dihapus
+//           - kolom position = urutan item di daftar (mulai dari 1)
+//         Hanya untuk admin (butuh session).
 
-/** Klien service role: hanya dipakai di server, setelah session admin dicek. */
-function db() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      `Env Supabase tidak terbaca (url: ${url ? "ada" : "KOSONG"}, secret key: ${key ? "ada" : "KOSONG"})`,
-    );
-  }
+import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getSession } from "@/lib/session";
+import type {
+  AwardRow,
+  ExpRow,
+  OrgRow,
+} from "@/components/dashboard/experienceEditor";
+
+const TABLES = {
+  experience: "landing_experience",
+  organization: "landing_organization",
+  award: "landing_award",
+} as const;
+type Section = keyof typeof TABLES;
+
+const LABEL: Record<Section, string> = {
+  experience: "Pengalaman",
+  organization: "Organisasi",
+  award: "Penghargaan",
+};
+
+const MAX_ITEMS = 50;
+const TIPE = ["fulltime", "internship", "freelance"];
+
+class InvalidInput extends Error {}
+
+/* ── koneksi Supabase (server only, pakai secret key) ──────────────── */
+
+function getDb(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Env Supabase belum lengkap (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY)");
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-function redirectTo(req: Request, path: string) {
-  return NextResponse.redirect(new URL(path, req.url), 303);
-}
+/* ── normalisasi baris dari database ───────────────────────────────── */
 
-function back(req: Request, params: { saved?: string; error?: string }) {
-  const qs = new URLSearchParams(params as Record<string, string>).toString();
-  return redirectTo(req, `${BACK}?${qs}#experience`);
-}
+type Raw = Record<string, unknown>;
+const s = (v: unknown) => (v == null ? "" : String(v));
 
-/* ── pembersih input ───────────────────────────────────── */
-
-type Raw = Record<string, string>;
-type Values = Record<string, unknown>;
-
-/** Teks wajib (1..max) atau null. */
-function text(v: string | undefined, max: number): string | null {
-  const t = (v ?? "").trim();
-  return t && t.length <= max ? t : null;
-}
-
-function isDate(v: string | undefined): v is string {
-  return !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
-}
-
-/** jsonb dari DB → string[] */
-function toStringArray(v: unknown): string[] {
+/** jsonb bisa datang sebagai array, string JSON, atau kosong -> selalu string[]. */
+function toArr(v: unknown): string[] {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === "string") {
     try {
@@ -69,223 +65,253 @@ function toStringArray(v: unknown): string[] {
   return [];
 }
 
-/** "<prefix>.<i>.<field>" → daftar baris urut menurut indeks. null = ada indeks tidak wajar. */
-function parseRows(form: FormData, prefix: string): Raw[] | null {
-  const map = new Map<number, Raw>();
-  const re = new RegExp(`^${prefix}\\.(\\d+)\\.([a-z_]+)$`);
-  for (const [k, v] of form.entries()) {
-    if (typeof v !== "string") continue;
-    const m = k.match(re);
-    if (!m) continue;
-    const i = Number(m[1]);
-    if (i > MAX_INDEX) return null;
-    const row = map.get(i) ?? {};
-    row[m[2]] = v;
-    map.set(i, row);
-  }
-  return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([, r]) => r);
+const normExp = (r: Raw): ExpRow => ({
+  id: s(r.id),
+  position: Number(r.position) || 0,
+  jabatan: s(r.jabatan),
+  perusahaan: s(r.perusahaan),
+  lokasi: s(r.lokasi),
+  tipe: r.tipe ? s(r.tipe) : null,
+  mulai: s(r.mulai).slice(0, 10),
+  selesai: r.selesai ? s(r.selesai).slice(0, 10) : null,
+  deskripsi: toArr(r.deskripsi),
+  teknologi: toArr(r.teknologi),
+});
+
+const normOrg = (r: Raw): OrgRow => ({
+  id: s(r.id),
+  position: Number(r.position) || 0,
+  jabatan: s(r.jabatan),
+  lembaga: s(r.lembaga),
+  periode: s(r.periode),
+});
+
+const normAward = (r: Raw): AwardRow => ({
+  id: s(r.id),
+  position: Number(r.position) || 0,
+  judul: s(r.judul),
+  penerbit: s(r.penerbit),
+  tahun: s(r.tahun),
+});
+
+async function readTable(db: SupabaseClient, section: Section): Promise<Raw[]> {
+  const { data, error } = await db
+    .from(TABLES[section])
+    .select("*")
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Raw[];
 }
 
-/* ── definisi tiap bagian ──────────────────────────────── */
+async function readSection(db: SupabaseClient, section: Section) {
+  const rows = await readTable(db, section);
+  if (section === "experience") return rows.map(normExp);
+  if (section === "organization") return rows.map(normOrg);
+  return rows.map(normAward);
+}
 
-type Spec = {
-  table: string;
-  prefix: string;
-  fields: string[]; // field isian (untuk mendeteksi baris baru yang masih kosong)
-  saved: string; // nilai ?saved=
-  errKey: string; // awalan kunci error (?error=<errKey>_invalid / _save)
-  build: (r: Raw) => Values | null; // null = tidak valid
-};
+/* ── validasi payload ──────────────────────────────────────────────── */
 
-const SPECS: Record<string, Spec> = {
-  experience: {
-    table: "landing_experience",
-    prefix: "exp",
-    fields: ["jabatan", "perusahaan", "lokasi", "mulai", "selesai", "deskripsi", "teknologi"],
-    saved: "experience",
-    errKey: "experience",
-    build: (r) => {
-      const jabatan = text(r.jabatan, 120);
-      const perusahaan = text(r.perusahaan, 120);
-      const lokasi = text(r.lokasi, 120);
-      const tipe = TYPES.includes(r.tipe ?? "") ? r.tipe : null;
-      if (!jabatan || !perusahaan || !lokasi || !tipe || !isDate(r.mulai)) return null;
+function text(o: Raw, k: string, label: string, max: number, where: string): string {
+  const v = typeof o[k] === "string" ? (o[k] as string).trim() : "";
+  if (!v) throw new InvalidInput(`${where}: ${label} wajib diisi.`);
+  if (v.length > max) throw new InvalidInput(`${where}: ${label} maksimal ${max} karakter.`);
+  return v;
+}
 
-      const selesai = (r.selesai ?? "").trim();
-      if (selesai && (!isDate(selesai) || selesai < r.mulai)) return null;
+function list(o: Raw, k: string, label: string, maxItems: number, maxLen: number, where: string): string[] {
+  const raw = o[k];
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) throw new InvalidInput(`${where}: ${label} tidak valid.`);
+  const out = Array.from(new Set(raw.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)));
+  if (out.length > maxItems) throw new InvalidInput(`${where}: ${label} maksimal ${maxItems}.`);
+  if (out.some((x) => x.length > maxLen)) {
+    throw new InvalidInput(`${where}: tiap poin ${label} maksimal ${maxLen} karakter.`);
+  }
+  return out;
+}
 
-      const deskripsi = (r.deskripsi ?? "")
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (deskripsi.length > 12 || deskripsi.some((s) => s.length > 300)) return null;
+function isDate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
 
-      const teknologi = Array.from(
-        new Set(
-          (r.teknologi ?? "")
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
-        ),
-      );
-      if (teknologi.length > 20 || teknologi.some((s) => s.length > 40)) return null;
+type Parsed = Raw & { id?: string };
 
-      return { jabatan, perusahaan, lokasi, tipe, mulai: r.mulai, selesai: selesai || null, deskripsi, teknologi };
-    },
-  },
-  organization: {
-    table: "landing_organization",
-    prefix: "org",
-    fields: ["jabatan", "lembaga", "periode"],
-    saved: "organization",
-    errKey: "org",
-    build: (r) => {
-      const jabatan = text(r.jabatan, 120);
-      const lembaga = text(r.lembaga, 120);
-      const periode = text(r.periode, 40);
-      return jabatan && lembaga && periode ? { jabatan, lembaga, periode } : null;
-    },
-  },
-  award: {
-    table: "landing_award",
-    prefix: "awd",
-    fields: ["judul", "penerbit", "tahun"],
-    saved: "award",
-    errKey: "award",
-    build: (r) => {
-      const judul = text(r.judul, 160);
-      const penerbit = text(r.penerbit, 120);
-      const tahun = text(r.tahun, 20);
-      return judul && penerbit && tahun ? { judul, penerbit, tahun } : null;
-    },
-  },
-};
+function parseItem(section: Section, raw: unknown, i: number): Parsed {
+  const where = `${LABEL[section]} #${i + 1}`;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new InvalidInput(`${where}: format data tidak valid.`);
+  }
+  const o = raw as Raw;
+  const id = typeof o.id === "string" && o.id ? o.id : undefined;
 
-/* ── GET ───────────────────────────────────────────────── */
+  if (section === "experience") {
+    const tipe = typeof o.tipe === "string" ? o.tipe : "";
+    if (!TIPE.includes(tipe)) throw new InvalidInput(`${where}: tipe tidak valid.`);
+
+    const mulai = typeof o.mulai === "string" ? o.mulai : "";
+    if (!isDate(mulai)) throw new InvalidInput(`${where}: tanggal mulai wajib diisi dan harus valid.`);
+
+    const selesaiRaw = typeof o.selesai === "string" && o.selesai ? o.selesai : null;
+    if (selesaiRaw && !isDate(selesaiRaw)) throw new InvalidInput(`${where}: tanggal selesai tidak valid.`);
+    if (selesaiRaw && selesaiRaw < mulai) {
+      throw new InvalidInput(`${where}: tanggal selesai tidak boleh sebelum tanggal mulai.`);
+    }
+
+    return {
+      id,
+      jabatan: text(o, "jabatan", "jabatan", 120, where),
+      perusahaan: text(o, "perusahaan", "perusahaan", 120, where),
+      lokasi: text(o, "lokasi", "lokasi", 120, where),
+      tipe,
+      mulai,
+      selesai: selesaiRaw,
+      deskripsi: list(o, "deskripsi", "deskripsi", 12, 300, where),
+      teknologi: list(o, "teknologi", "teknologi", 20, 40, where),
+    };
+  }
+
+  if (section === "organization") {
+    return {
+      id,
+      jabatan: text(o, "jabatan", "jabatan", 120, where),
+      lembaga: text(o, "lembaga", "lembaga", 120, where),
+      periode: text(o, "periode", "periode", 40, where),
+    };
+  }
+
+  return {
+    id,
+    judul: text(o, "judul", "judul", 160, where),
+    penerbit: text(o, "penerbit", "penerbit", 120, where),
+    tahun: text(o, "tahun", "tahun", 20, where),
+  };
+}
+
+/* ── sinkronisasi satu tabel ───────────────────────────────────────── */
+
+async function syncTable(db: SupabaseClient, section: Section, rows: Parsed[]) {
+  const table = TABLES[section];
+
+  const { data: existing, error: e0 } = await db.from(table).select("id");
+  if (e0) throw e0;
+  const existingIds = new Set((existing ?? []).map((r) => String((r as Raw).id)));
+
+  const keep = new Set<string>();
+  const updates: Raw[] = [];
+  const inserts: Raw[] = [];
+
+  rows.forEach((r, idx) => {
+    const { id, ...rest } = r;
+    const payload = { ...rest, position: idx + 1 };
+    if (id && existingIds.has(id) && !keep.has(id)) {
+      keep.add(id);
+      updates.push({ id, ...payload });
+    } else {
+      inserts.push(payload);
+    }
+  });
+
+  // urutan aman: tambah & perbarui dulu, hapus terakhir (kalau gagal, data lama tidak hilang)
+  if (inserts.length) {
+    const { error } = await db.from(table).insert(inserts);
+    if (error) throw error;
+  }
+  if (updates.length) {
+    const { error } = await db.from(table).upsert(updates, { onConflict: "id" });
+    if (error) throw error;
+  }
+  const removed = [...existingIds].filter((id) => !keep.has(id));
+  if (removed.length) {
+    const { error } = await db.from(table).delete().in("id", removed);
+    if (error) throw error;
+  }
+}
+
+/* ── handler ───────────────────────────────────────────────────────── */
 
 export async function GET() {
-  if (!(await getSession())) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
   try {
-    const supabase = db();
-    const [exp, org, awd] = await Promise.all([
-      supabase.from("landing_experience").select("*").order("position", { ascending: true }),
-      supabase.from("landing_organization").select("*").order("position", { ascending: true }),
-      supabase.from("landing_award").select("*").order("position", { ascending: true }),
+    const db = getDb();
+    const [experiences, orgs, awards] = await Promise.all([
+      readSection(db, "experience"),
+      readSection(db, "organization"),
+      readSection(db, "award"),
     ]);
-    if (exp.error) throw exp.error;
-    if (org.error) throw org.error;
-    if (awd.error) throw awd.error;
-
-    const experiences = (exp.data ?? []).map((r) => ({
-      id: String(r.id),
-      position: Number(r.position) || 0,
-      jabatan: String(r.jabatan ?? ""),
-      perusahaan: String(r.perusahaan ?? ""),
-      lokasi: String(r.lokasi ?? ""),
-      tipe: r.tipe ? String(r.tipe) : null,
-      mulai: String(r.mulai ?? ""),
-      selesai: r.selesai ? String(r.selesai) : null,
-      deskripsi: toStringArray(r.deskripsi),
-      teknologi: toStringArray(r.teknologi),
-    }));
-
-    return NextResponse.json(
-      { data: { experiences, orgs: org.data ?? [], awards: awd.data ?? [] } },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ data: { experiences, orgs, awards } });
   } catch (err) {
-    console.error("[experience edit GET]", err);
-    const detail = process.env.NODE_ENV === "production" ? undefined : (err as { message?: string } | null)?.message;
-    return NextResponse.json({ error: "server_error", detail }, { status: 500 });
+    console.error("[api experience] GET", err);
+    return NextResponse.json(
+      { error: "experience_load", message: "Data pengalaman gagal dimuat." },
+      { status: 500 },
+    );
   }
 }
 
-/* ── POST ──────────────────────────────────────────────── */
+export async function POST(req: NextRequest) {
+  if (!(await getSession())) {
+    return NextResponse.json(
+      { error: "unauthorized", message: "Sesi berakhir. Silakan masuk kembali." },
+      { status: 401 },
+    );
+  }
 
-export async function POST(req: Request) {
-  if (!(await getSession())) return redirectTo(req, "/admin");
-
-  let form: FormData;
+  let body: unknown;
   try {
-    form = await req.formData();
+    body = await req.json();
   } catch {
-    return back(req, { error: "experience_invalid" });
+    return NextResponse.json({ error: "bad_json", message: "Body request bukan JSON yang valid." }, { status: 400 });
   }
 
-  const section = String(form.get("section") ?? "");
-  const spec = Object.prototype.hasOwnProperty.call(SPECS, section) ? SPECS[section] : null;
-  if (!spec) return back(req, { error: "experience_invalid" });
-  const invalid = { error: `${spec.errKey}_invalid` };
+  const { section, items } = (body ?? {}) as { section?: unknown; items?: unknown };
+  if (typeof section !== "string" || !Object.prototype.hasOwnProperty.call(TABLES, section)) {
+    return NextResponse.json({ error: "bad_section", message: "Bagian data tidak dikenal." }, { status: 400 });
+  }
+  const sec = section as Section;
 
-  const rows = parseRows(form, spec.prefix);
-  if (!rows) return back(req, invalid);
+  if (!Array.isArray(items)) {
+    return NextResponse.json({ error: `${sec}_invalid`, message: "Daftar data tidak valid." }, { status: 400 });
+  }
+  if (items.length > MAX_ITEMS) {
+    return NextResponse.json(
+      { error: `${sec}_invalid`, message: `Maksimal ${MAX_ITEMS} baris per bagian.` },
+      { status: 400 },
+    );
+  }
 
-  // pilah: dihapus / dipertahankan (baru atau diperbarui)
-  const removed: string[] = [];
-  const keep: { id?: string; order: number; values: Values }[] = [];
-
-  for (let idx = 0; idx < rows.length; idx++) {
-    const r = rows[idx];
-    const id = (r.id ?? "").trim() || undefined;
-    if (id && !UUID.test(id)) return back(req, invalid);
-
-    if (r.hapus === "1") {
-      if (id) removed.push(id);
-      continue;
+  let rows: Parsed[];
+  try {
+    rows = items.map((it, i) => parseItem(sec, it, i));
+  } catch (err) {
+    if (err instanceof InvalidInput) {
+      return NextResponse.json({ error: `${sec}_invalid`, message: err.message }, { status: 400 });
     }
-    const blank = spec.fields.every((f) => !(r[f] ?? "").trim());
-    if (blank && !id) continue; // baris baru yang tidak diisi
-
-    const values = spec.build(r);
-    if (!values) return back(req, invalid);
-
-    const n = Number((r.urutan ?? "").trim());
-    // urutan kosong → taruh di akhir; indeks menjaga urutan yang stabil
-    const order = (r.urutan ?? "").trim() !== "" && Number.isFinite(n) ? n : 1e6;
-    keep.push({ id, order: order * 1000 + idx, values });
+    throw err;
   }
-
-  if (keep.length > MAX_ROWS) return back(req, invalid);
-  keep.sort((a, b) => a.order - b.order);
 
   try {
-    const supabase = db();
+    const db = getDb();
+    await syncTable(db, sec, rows);
+    const fresh = await readSection(db, sec);
 
-    // id yang dikirim harus benar-benar ada di tabel
-    const { data: existing, error: selErr } = await supabase.from(spec.table).select("id");
-    if (selErr) throw selErr;
-    const known = new Set((existing ?? []).map((r) => String((r as { id: unknown }).id)));
-    if (keep.some((k) => k.id && !known.has(k.id))) return back(req, invalid);
-
-    const toDelete = Array.from(new Set(removed)).filter((id) => known.has(id));
-    if (toDelete.length > 0) {
-      const { error } = await supabase.from(spec.table).delete().in("id", toDelete);
-      if (error) throw error;
+    try {
+      revalidatePath("/");
+      revalidatePath("/dashboard/landingPage");
+    } catch {
+      /* revalidate gagal tidak membatalkan penyimpanan */
     }
 
-    const updates = keep
-      .map((k, i) => ({ k, position: i + 1 }))
-      .filter(({ k }) => k.id)
-      .map(({ k, position }) => ({ id: k.id, position, ...k.values }));
-    const inserts = keep
-      .map((k, i) => ({ k, position: i + 1 }))
-      .filter(({ k }) => !k.id)
-      .map(({ k, position }) => ({ position, ...k.values }));
-
-    if (updates.length > 0) {
-      const { error } = await supabase.from(spec.table).upsert(updates, { onConflict: "id" });
-      if (error) throw error;
-    }
-    if (inserts.length > 0) {
-      const { error } = await supabase.from(spec.table).insert(inserts);
-      if (error) throw error;
-    }
+    return NextResponse.json({ data: { section: sec, items: fresh } });
   } catch (err) {
-    console.error(`[experience edit POST ${section}]`, err);
-    return back(req, { error: `${spec.errKey}_save` });
+    console.error(`[api experience] POST ${sec}`, err);
+    return NextResponse.json(
+      {
+        error: `${sec}_save`,
+        message: `${LABEL[sec]} gagal disimpan. Periksa tabel ${TABLES[sec]} dan secret key Supabase.`,
+      },
+      { status: 500 },
+    );
   }
-
-  return back(req, { saved: spec.saved });
 }

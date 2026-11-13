@@ -1,33 +1,62 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "framer-motion";
 import { ArrowUpRight, Images } from "lucide-react";
 import type { ProjectItem, ProjectTab } from "@/lib/data";
 import { mono } from "../fonts";
-import { ProjectModal, Shot, pad, themeOf } from "./projectModal";
+import { ProjectModal, Shot, pad, themeOf, type Theme } from "./projectModal";
 import { EASE, Tilt } from "../ui";
 
-/* ───────────── Konfigurasi ───────────── */
+/* ───────────── Warna & jenis bidang ───────────── */
 
-// nama lain yang diterima di URL: /projects?role=...
-const ALIASES: Record<string, string[]> = {
-  software: ["Software Engineer", "app", "web"],
-  uiux: ["UI/UX Designer", "ui", "ux"],
-  photo: ["photographer", "foto"],
+type Kind = "software" | "uiux" | "photo" | "graphic";
+
+const PALETTE: Record<Kind, { hex: string; rgb: string; ink: string }> = {
+  software: { hex: "#6366F1", rgb: "99,102,241", ink: "#FFFFFF" },
+  uiux: { hex: "#F25C5C", rgb: "242,92,92", ink: "#000000" },
+  photo: { hex: "#FFC857", rgb: "255,200,87", ink: "#000000" },
+  graphic: { hex: "#34D399", rgb: "52,211,153", ink: "#000000" },
 };
+
+/** Tentukan jenis bidang dari teks (id / label / short / param URL). */
+function kindFromText(text: string): Kind | null {
+  const key = text.toLowerCase();
+  if (/graphic|grafis/.test(key)) return "graphic";
+  if (/photo|foto/.test(key)) return "photo";
+  if (/\bui\b|\bux\b|ui\s*\/\s*ux|uiux/.test(key)) return "uiux";
+  if (/software|engineer|\bapp\b|\bweb\b/.test(key)) return "software";
+  return null;
+}
+
+function kindOf(t: ProjectTab): Kind | null {
+  return kindFromText(`${t.id} ${t.label} ${t.short ?? ""}`);
+}
+
+/** Ikon & field lain tetap dari themeOf; hanya warna yang ditimpa. */
+function themeForTab(t: ProjectTab | null): Theme {
+  if (!t) return themeOf(null);
+  const base = themeOf(t.id);
+  const kind = kindOf(t);
+  return kind ? { ...base, ...PALETTE[kind] } : base;
+}
+
+/* ───────────── Konfigurasi ───────────── */
 
 function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null {
   if (!param) return null;
   const q = param.toLowerCase();
-  return tabs.find((t) => t.id.toLowerCase() === q || (ALIASES[t.id] ?? []).includes(q)) ?? null;
+  const byId = tabs.find((t) => t.id.toLowerCase() === q);
+  if (byId) return byId;
+  const kind = kindFromText(q);
+  return kind ? (tabs.find((t) => kindOf(t) === kind) ?? null) : null;
 }
 
 const COPY: Record<string, { title: string; text: string }> = {
   all: {
     title: "My Projects",
-    text: "Kumpulan karya saya dari tiga bidang: membangun aplikasi, merancang UI/UX, dan fotografi.",
+    text: "Kumpulan karya saya dari empat bidang: membangun aplikasi, merancang UI/UX, fotografi, dan desain grafis.",
   },
   software: {
     title: "Software Engineer",
@@ -41,10 +70,14 @@ const COPY: Record<string, { title: string; text: string }> = {
     title: "Photographer",
     text: "Karya fotografi yang saya ambil dan olah sendiri.",
   },
+  graphic: {
+    title: "Graphic Designer",
+    text: "Desain visual seperti poster, logo, dan identitas merek yang saya buat.",
+  },
 };
 
 type Entry = { p: ProjectItem; tab: ProjectTab; key: string };
-type Option = { id: string | null; label: string; short: string; count: number };
+type Option = { id: string | null; label: string; short: string; count: number; theme: Theme };
 
 /* ───────────── Card ───────────── */
 
@@ -66,7 +99,8 @@ function ProjectCard({
   onOpen: (rect: DOMRect) => void;
 }) {
   const { p, tab } = entry;
-  const th = themeOf(tab.id);
+  const th = themeForTab(tab);
+  const isPhoto = kindOf(tab) === "photo";
   const extraTools = p.tools.length - 3;
 
   // satu-satunya varian yang bergantung pada tema
@@ -106,8 +140,12 @@ function ProjectCard({
             onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
             className="flex h-full w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
-            {/* sampul */}
-            <span className="relative block aspect-[16/10] w-full overflow-hidden bg-[#0B0B24]">
+            {/* sampul: foto dibuat lebih tinggi hanya saat mobile (1 kolom) */}
+            <span
+              className={`relative block w-full overflow-hidden bg-[#0B0B24] ${
+                isPhoto ? "aspect-[4/5] sm:aspect-[16/10]" : "aspect-[16/10]"
+              }`}
+            >
               <motion.span variants={imgV} className="absolute inset-0 block">
                 <Shot
                   src={p.images[0] ?? ""}
@@ -147,7 +185,9 @@ function ProjectCard({
               <span className="mt-1 text-xl font-semibold leading-snug">{p.title}</span>
               <span className="text-sm text-white/60">{p.role}</span>
 
-              <span className="mt-3 line-clamp-2 text-sm leading-relaxed text-white/70">{p.desc}</span>
+              <span className="mt-3 line-clamp-2 break-words text-sm leading-relaxed text-white/70">
+                {p.desc}
+              </span>
 
               <span className="mt-4 flex flex-wrap gap-1.5">
                 {p.tools.slice(0, 3).map((t) => (
@@ -179,11 +219,14 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const router = useRouter();
   const params = useSearchParams();
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
+  const tabListRef = useRef<HTMLDivElement>(null);
 
   const active = resolveTab(params.get("role"), tabs);
   const activeId = active?.id ?? null;
-  const theme = themeOf(activeId);
-  const copy = COPY[activeId ?? "all"] ?? COPY.all;
+  const theme = themeForTab(active);
+  const copy = active
+    ? (COPY[kindOf(active) ?? ""] ?? { title: active.label, text: COPY.all.text })
+    : COPY.all;
 
   const entries = useMemo<Entry[]>(
     () =>
@@ -199,9 +242,22 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
       label: "Semua",
       short: "Semua",
       count: tabs.reduce((sum, t) => sum + t.projects.length, 0),
+      theme: themeForTab(null),
     },
-    ...tabs.map((t) => ({ id: t.id, label: t.label, short: t.short, count: t.projects.length })),
+    ...tabs.map((t) => ({
+      id: t.id,
+      label: t.label,
+      short: t.short,
+      count: t.projects.length,
+      theme: themeForTab(t),
+    })),
   ];
+
+  // di mobile, tab aktif digulung ke tengah barisan tab
+  useEffect(() => {
+    const el = tabListRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [activeId]);
 
   function setRole(id: string | null) {
     setSel(null);
@@ -291,39 +347,45 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
 
           {/* filter bidang */}
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* mobile: bisa digeser ke samping; sm ke atas: tampil biasa */}
             <div
-              role="tablist"
-              aria-label="Filter bidang proyek"
-              className="grid grid-cols-4 gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 sm:inline-grid sm:grid-flow-col sm:grid-cols-none"
+              ref={tabListRef}
+              className="-mx-5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
             >
-              {options.map((o) => {
-                const th = themeOf(o.id);
-                const on = o.id === activeId;
-                return (
-                  <button
-                    key={o.id ?? "all"}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => setRole(o.id)}
-                    className="relative z-0 flex items-center justify-center gap-1.5 rounded-full px-2 py-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/60 sm:gap-2 sm:px-5 sm:text-sm"
-                    style={{ color: on ? th.ink : "rgba(255,255,255,0.6)" }}
-                  >
-                    {on && (
-                      <motion.span
-                        layoutId="projects-filter-pill"
-                        transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                        className="absolute inset-0 -z-10 rounded-full"
-                        style={{ background: th.hex }}
-                      />
-                    )}
-                    <th.Icon size={15} className="hidden min-[400px]:block" />
-                    <span className="sm:hidden">{o.short}</span>
-                    <span className="hidden sm:inline">{o.label}</span>
-                    <span className={`${mono.className} hidden text-[11px] opacity-60 sm:inline`}>{o.count}</span>
-                  </button>
-                );
-              })}
+              <div
+                role="tablist"
+                aria-label="Filter bidang proyek"
+                className="inline-flex w-max snap-x snap-mandatory gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1"
+              >
+                {options.map((o) => {
+                  const th = o.theme;
+                  const on = o.id === activeId;
+                  return (
+                    <button
+                      key={o.id ?? "all"}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => setRole(o.id)}
+                      className="relative z-0 flex shrink-0 snap-center items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/60 sm:gap-2 sm:px-5 sm:text-sm"
+                      style={{ color: on ? th.ink : "rgba(255,255,255,0.6)" }}
+                    >
+                      {on && (
+                        <motion.span
+                          layoutId="projects-filter-pill"
+                          transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                          className="absolute inset-0 -z-10 rounded-full"
+                          style={{ background: th.hex }}
+                        />
+                      )}
+                      <th.Icon size={15} />
+                      <span className="sm:hidden">{o.short}</span>
+                      <span className="hidden sm:inline">{o.label}</span>
+                      <span className={`${mono.className} text-[11px] opacity-60`}>{o.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <p className="text-sm text-white/45">

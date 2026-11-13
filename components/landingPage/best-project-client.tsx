@@ -16,6 +16,33 @@ import { mono } from "../fonts";
 import { EASE, Heading } from "../ui";
 import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/projects/projectModal";
 
+/* ───────────── Warna per bidang ───────────── */
+
+const PALETTE = {
+  software: { hex: "#6366F1", rgb: "99,102,241", ink: "#FFFFFF" },
+  uiux: { hex: "#F25C5C", rgb: "242,92,92", ink: "#000000" },
+  photo: { hex: "#FFC857", rgb: "255,200,87", ink: "#000000" },
+  graphic: { hex: "#34D399", rgb: "52,211,153", ink: "#000000" },
+} as const;
+
+/** Tentukan warna dari nama tab; ikon & field lain tetap dari themeOf. */
+function themeForTab(t: ProjectTab): Theme {
+  const base = themeOf(t.id);
+  const key = `${t.id} ${t.label} ${t.short ?? ""}`.toLowerCase();
+
+  const color = /graphic/.test(key)
+    ? PALETTE.graphic
+    : /photo/.test(key)
+      ? PALETTE.photo
+      : /\bui\b|\bux\b|ui\s*\/\s*ux|uiux/.test(key)
+        ? PALETTE.uiux
+        : /software|engineer/.test(key)
+          ? PALETTE.software
+          : null;
+
+  return color ? { ...base, ...color } : base;
+}
+
 /* ───────────── Konfigurasi ───────────── */
 
 // Pola lebar card di layar besar (3 kolom) menurut jumlah proyek di tab (1–6).
@@ -181,9 +208,9 @@ function ProjectCard({
               </span>
 
               {/* isi bawah */}
-              <span className="absolute inset-x-0 bottom-0 z-10 block p-5">
+              <span className="absolute inset-x-0 bottom-0 z-10 block min-w-0 p-5">
                 <span className="flex items-center gap-2">
-                  <span className="h-px w-6" style={{ background: theme.hex }} />
+                  <span className="h-px w-6 shrink-0" style={{ background: theme.hex }} />
                   <span
                     className={`${mono.className} truncate text-[11px] uppercase tracking-wider`}
                     style={{ color: theme.hex }}
@@ -192,23 +219,27 @@ function ProjectCard({
                   </span>
                 </span>
 
+                {/* judul: maksimal 2 baris */}
                 <motion.span
                   variants={titleV}
-                  className={`mt-2 block text-2xl font-semibold leading-tight ${big ? "lg:text-3xl" : ""}`}
+                  className={`mt-2 line-clamp-2 block break-words text-2xl font-semibold leading-tight ${
+                    big ? "lg:text-3xl" : ""
+                  }`}
                 >
                   {p.title}
                 </motion.span>
 
-                <span className="mt-2 line-clamp-2 block max-w-[56ch] text-sm leading-relaxed text-white/75">
+                {/* deskripsi: maksimal 2 baris, sisanya dipotong dengan "…"; teks lengkap ada di modal */}
+                <span className="mt-2 line-clamp-2 block max-w-[56ch] break-words text-sm leading-relaxed text-white/75">
                   {p.desc}
                 </span>
 
                 <span className="mt-4 flex items-center justify-between gap-3">
-                  <span className="flex flex-wrap gap-1.5">
+                  <span className="flex min-w-0 flex-wrap gap-1.5">
                     {p.tools.slice(0, 3).map((t) => (
                       <span
                         key={t}
-                        className={`${mono.className} rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 text-[11px] text-white/75 backdrop-blur`}
+                        className={`${mono.className} max-w-[120px] truncate rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 text-[11px] text-white/75 backdrop-blur`}
                       >
                         {t}
                       </span>
@@ -244,7 +275,7 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
 
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
-  const theme = themeOf(tab.id);
+  const theme = themeForTab(tab);
   const totalProjects = tabs.reduce((sum, t) => sum + t.projects.length, 0);
   const n = tab.projects.length;
 
@@ -299,7 +330,7 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
               style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
             >
               {tabs.map((t) => {
-                const th = themeOf(t.id);
+                const th = themeForTab(t);
                 const on = t.id === tabId;
                 return (
                   <button
