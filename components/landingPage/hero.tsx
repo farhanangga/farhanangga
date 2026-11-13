@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { PenTool, type LucideIcon } from "lucide-react";
 import {
   MotionValue,
@@ -88,10 +88,11 @@ const heroCss = `
 .hero-hello{font-size:clamp(1.25rem,4.6vw,1.75rem)}
 .hero-name{font-size:clamp(2.75rem,15.5vw,5.75rem);line-height:.95}
 .hero-tagline{max-width:40ch;margin:1.1rem auto 0;font-size:.95rem;line-height:1.6;color:rgba(255,255,255,.72)}
-.hero-fl-kb{left:-3%;top:15%;width:31%}
-.hero-fl-pal{right:-3%;top:25%;width:28%}
-.hero-fl-cam{left:10%;bottom:43%;width:28%}
-.hero-fl-gfx{right:3%;bottom:33%;width:25%}
+/* ikon: 2 kiri + 2 kanan, ukuran sama, sejajar rapi (simetris) */
+.hero-fl-kb{left:-2%;top:8%;width:34%}
+.hero-fl-pal{right:-2%;top:8%;width:34%}
+.hero-fl-cam{left:-2%;top:40%;width:34%}
+.hero-fl-gfx{right:-2%;top:40%;width:34%}
 .hero-ico-fluid{display:block;position:relative;width:100%;aspect-ratio:1/1}
 .hero-hide-lg{display:block}
 .hero-show-lg{display:none}
@@ -122,10 +123,11 @@ const heroCss = `
   .hero-name{font-size:clamp(3rem,5.4vw,6rem)}
   .hero-tagline{margin:1.25rem 0 0;font-size:1rem}
   .hero-photo{width:auto;height:clamp(360px,calc(100svh - 7rem),680px)}
-  .hero-fl-kb{left:-9%;top:17%;width:32%}
-  .hero-fl-pal{right:-7%;top:27%;width:29%}
-  .hero-fl-cam{left:13%;bottom:24%;width:29%}
-  .hero-fl-gfx{right:-5%;bottom:22%;width:27%}
+  /* kolom kiri & kanan sejajar, lebih besar */
+  .hero-fl-kb{left:-9%;top:14%;width:36%}
+  .hero-fl-pal{right:-9%;top:14%;width:36%}
+  .hero-fl-cam{left:-9%;top:48%;width:36%}
+  .hero-fl-gfx{right:-9%;top:48%;width:36%}
   .hero-roles{grid-template-columns:1fr;gap:1rem;padding-bottom:3svh;align-self:center}
   .hero-role-card{gap:1rem;padding:.75rem 1.25rem .75rem .75rem;transition:transform .3s}
   .hero-role-card:hover{transform:translateX(-.5rem)}
@@ -165,7 +167,7 @@ function HeroIcon({ item }: { item: HeroIconData }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
-      <span role="img" aria-label={item.label} className="hero-ico-fluid grid place-items-center text-5xl">
+      <span role="img" aria-label={item.label} className="hero-ico-fluid grid place-items-center text-6xl">
         {item.fallback}
       </span>
     );
@@ -176,7 +178,7 @@ function HeroIcon({ item }: { item: HeroIconData }) {
         src={item.src}
         alt={item.label}
         fill
-        sizes="140px"
+        sizes="260px"
         onError={() => setFailed(true)}
         className="object-contain drop-shadow-[0_12px_24px_rgba(99,102,241,0.55)]"
       />
@@ -195,14 +197,14 @@ function Float({ sx, sy, depth, delay, item, cls, rot }: {
     <motion.span style={{ x, y, position: "absolute", zIndex: 4 }} className={cls}>
       <motion.span
         className="block cursor-pointer"
-        whileHover={{ scale: 1.12, rotate: 8, y: -8 }}
-        whileTap={{ scale: 1.08, rotate: -8 }}
+        whileHover={{ scale: 1.1, rotate: 6, y: -6 }}
+        whileTap={{ scale: 1.06, rotate: -6 }}
         transition={{ type: "spring", stiffness: 300, damping: 14 }}
       >
         <motion.span
           className="block"
           initial={{ scale: 0, rotate: rot - 30 }}
-          animate={{ scale: 1, rotate: [rot - 3, rot + 3, rot - 3], y: [0, -8, 0] }}
+          animate={{ scale: 1, rotate: [rot - 2, rot + 2, rot - 2], y: [0, -6, 0] }}
           transition={{
             scale: { type: "spring", stiffness: 160, damping: 12, delay: 1.1 + delay },
             rotate: { duration: 5 + delay * 2, repeat: Infinity, ease: "easeInOut", delay: 1.4 },
@@ -265,12 +267,20 @@ export function Hero() {
 
   const lines = nameLines(nama);
 
+  /* posisi kursor untuk ikon & cahaya */
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   const sx = useSpring(mx, { stiffness: 60, damping: 15 });
   const sy = useSpring(my, { stiffness: 60, damping: 15 });
-  const photoX = useTransform(sx, [-0.5, 0.5], [-16, 16]);
-  const photoY = useTransform(sy, [-0.5, 0.5], [-10, 10]);
+
+  /* posisi kursor KHUSUS foto orang: berhenti diperbarui saat foto disorot */
+  const photoFrozen = useRef(false);
+  const pmx = useMotionValue(0);
+  const pmy = useMotionValue(0);
+  const spx = useSpring(pmx, { stiffness: 60, damping: 15 });
+  const spy = useSpring(pmy, { stiffness: 60, damping: 15 });
+  const photoX = useTransform(spx, [-0.5, 0.5], [-16, 16]);
+  const photoY = useTransform(spy, [-0.5, 0.5], [-10, 10]);
 
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 700], [0, -140]);
@@ -290,8 +300,15 @@ export function Hero() {
         // parallax kursor hanya untuk desktop; di mobile foto harus tetap rata tengah
         if (!window.matchMedia("(min-width: 1024px)").matches) return;
         const r = e.currentTarget.getBoundingClientRect();
-        mx.set((e.clientX - r.left) / r.width - 0.5);
-        my.set((e.clientY - r.top) / r.height - 0.5);
+        const nx = (e.clientX - r.left) / r.width - 0.5;
+        const ny = (e.clientY - r.top) / r.height - 0.5;
+        mx.set(nx);
+        my.set(ny);
+        // saat kursor di atas foto orang, foto tidak ikut bergerak
+        if (!photoFrozen.current) {
+          pmx.set(nx);
+          pmy.set(ny);
+        }
       }}
       className="relative isolate flex flex-col overflow-hidden bg-[radial-gradient(ellipse_at_top,#0A0A6B_0%,#02020F_55%)]"
       style={{ minHeight: "100svh" }}
@@ -405,7 +422,19 @@ export function Hero() {
             />
 
             {status === "ready" && photoSrc && (
-              <motion.div style={{ x: photoX, y: photoY, scale: photoScale, zIndex: 2 }} className="absolute inset-0 origin-bottom">
+              <motion.div
+                style={{ x: photoX, y: photoY, scale: photoScale, zIndex: 2 }}
+                className="absolute inset-0 origin-bottom"
+                onPointerEnter={() => {
+                  // disorot → foto langsung diam di posisinya
+                  photoFrozen.current = true;
+                  spx.stop();
+                  spy.stop();
+                }}
+                onPointerLeave={() => {
+                  photoFrozen.current = false;
+                }}
+              >
                 <motion.div
                   className="absolute inset-0"
                   initial={{ clipPath: "circle(0% at 50% 100%)", y: 60 }}
@@ -431,10 +460,11 @@ export function Hero() {
             {/* pudar ke latar di bawah foto (mobile) agar nama terbaca */}
             <div aria-hidden className="hero-fade hero-hide-lg" />
 
-            <Float sx={sx} sy={sy} depth={50} delay={0} item={heroIcons[0]} cls="hero-fl-kb" rot={-12} />
-            <Float sx={sx} sy={sy} depth={35} delay={0.3} item={heroIcons[1]} cls="hero-fl-pal" rot={12} />
-            <Float sx={sx} sy={sy} depth={60} delay={0.6} item={heroIcons[2]} cls="hero-fl-cam" rot={-6} />
-            <Float sx={sx} sy={sy} depth={45} delay={0.9} item={heroIcons[3]} cls="hero-fl-gfx" rot={8} />
+            {/* 4 ikon: kiri atas, kiri bawah, kanan atas, kanan bawah (simetris) */}
+            <Float sx={sx} sy={sy} depth={22} delay={0} item={heroIcons[0]} cls="hero-fl-kb" rot={-8} />
+            <Float sx={sx} sy={sy} depth={22} delay={0.3} item={heroIcons[1]} cls="hero-fl-pal" rot={8} />
+            <Float sx={sx} sy={sy} depth={22} delay={0.6} item={heroIcons[2]} cls="hero-fl-cam" rot={-8} />
+            <Float sx={sx} sy={sy} depth={22} delay={0.9} item={heroIcons[3]} cls="hero-fl-gfx" rot={8} />
           </div>
 
           {/* ---------- role ---------- */}
