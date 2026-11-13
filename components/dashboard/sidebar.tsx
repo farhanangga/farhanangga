@@ -4,12 +4,22 @@ import { useEffect, useId } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, ChevronLeft, FolderKanban, LayoutDashboard, Mail, Settings, X } from "lucide-react";
+import {
+  Activity,
+  ChevronLeft,
+  FolderKanban,
+  LayoutDashboard,
+  Mail,
+  PanelsTopLeft,
+  Settings,
+  X,
+} from "lucide-react";
 import { ACCENT_GLOW, ACCENT_GRADIENT, Avatar, EASE, SIDEBAR_BG } from "./shared";
 import { useShell } from "./shell";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/dashboard/landingPage", label: "Landing Page", Icon: PanelsTopLeft },
   { href: "/dashboard/projects", label: "Projects", Icon: FolderKanban },
   { href: "/dashboard/activities", label: "Activities", Icon: Activity },
   { href: "/dashboard/contacts", label: "Contact", Icon: Mail },
@@ -51,7 +61,10 @@ function NavList({
   return (
     <nav aria-label="Menu dashboard" className="mt-9 flex flex-col gap-1.5">
       {NAV.map(({ href, label, Icon }) => {
-        const on = href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+        const on =
+          href === "/dashboard"
+            ? pathname === href
+            : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={href}
@@ -60,7 +73,7 @@ function NavList({
             aria-current={on ? "page" : undefined}
             aria-label={label}
             title={collapsed ? label : undefined}
-            className={`relative z-0 flex h-12 items-center gap-3.5 rounded-xl px-4 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/60 ${
+            className={`relative z-0 flex h-12 shrink-0 items-center gap-3.5 rounded-xl px-4 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/60 ${
               on ? "text-white" : "text-white/70 hover:bg-white/[0.06] hover:text-white"
             }`}
           >
@@ -121,16 +134,22 @@ export function Sidebar({ name, role }: { name: string; role: string }) {
         <div className="px-4">
           <Brand collapsed={collapsed} />
         </div>
-        <NavList pathname={pathname} collapsed={collapsed} />
 
-        {/* tombol ciut / lebar di tepi sidebar */}
+        {/* area menu: bisa di-scroll bila layar pendek */}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <NavList pathname={pathname} collapsed={collapsed} />
+        </div>
+
+        {/* tombol ciut / lebar: di tengah antara judul dan list menu
+            brand berakhir di 48px, menu mulai di 84px -> tengah = 66px
+            tinggi tombol 44px (28 + border 2x8) -> top = 66 - 22 = 44px */}
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
           aria-expanded={!collapsed}
           title={collapsed ? "Perluas (Ctrl+B)" : "Ciutkan (Ctrl+B)"}
-          className="absolute -right-3.5 top-8 grid h-7 w-7 place-items-center rounded-full border-4 border-[color:var(--bg)] text-white outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-[#5A64D8] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg)] box-content"
+          className="absolute -right-3.5 top-[2.75rem] box-content grid h-7 w-7 place-items-center rounded-full border-4 border-[color:var(--bg)] text-white outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-[#5A64D8] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg)]"
           style={{ background: ACCENT_GRADIENT }}
         >
           <ChevronLeft
@@ -174,7 +193,9 @@ export function Sidebar({ name, role }: { name: string; role: string }) {
                   <X size={16} />
                 </button>
               </div>
-              <NavList pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <NavList pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              </div>
               <UserCard name={name} role={role} />
             </motion.aside>
           </div>

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { PenTool, type LucideIcon } from "lucide-react";
 import {
   MotionValue,
   motion,
@@ -12,31 +13,70 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { dummyPhoto, profile, roles } from "@/lib/data";
 import { mono } from "@/components/fonts";
 import { EASE, Icon, Magnetic } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
-/* GAMBAR HERO: ubah folder di sini kalau lokasi file-nya berbeda.     */
-/* File ada di  public/assets/hero/  →  dipanggil sebagai  /assets/hero */
-/* (jangan tulis "public" dan jangan pakai "@/").                      */
+/* DATA: nama lengkap, deskripsi, dan foto HANYA dari API.             */
+/* Tidak ada isi bawaan di komponen ini.                               */
+/* ------------------------------------------------------------------ */
+const API_URL = "/api/landingPage/hero";
+
+type HeroData = {
+  namaLengkap: string;
+  deskripsi: string;
+  urlFoto: string | null;
+};
+
+type Status = "loading" | "ready" | "empty" | "error";
+
+/* ------------------------------------------------------------------ */
+/* GAMBAR IKON HERO: public/assets/hero/ → dipanggil /assets/hero      */
 /* ------------------------------------------------------------------ */
 const ASSET_DIR = "/assets/hero";
-const PHOTO_SRC = `${ASSET_DIR}/person.png`;
 
 const heroIcons = [
   { key: "keyboard", src: `${ASSET_DIR}/keyboard.png`, label: "Keyboard", fallback: "⌨️" },
   { key: "palette", src: `${ASSET_DIR}/palette.png`, label: "Palet warna", fallback: "🎨" },
   { key: "camera", src: `${ASSET_DIR}/camera.png`, label: "Kamera", fallback: "📷" },
+  { key: "graphic", src: `${ASSET_DIR}/graphic.png`, label: "Graphic design", fallback: "✏️" },
 ];
 
 type HeroIconData = (typeof heroIcons)[number];
 
 /* ------------------------------------------------------------------ */
-/* CSS khusus hero (tidak bergantung pada class Tailwind).              */
-/*   < 1024px  : susunan poster → foto, nama menimpa bawah foto,        */
-/*               tagline + tombol, 3 kartu role, pita berjalan.         */
-/*   ≥ 1024px  : 3 kolom (nama | foto | role).                          */
+/* ROLE (statis).                                                      */
+/* ------------------------------------------------------------------ */
+type Role = {
+  label: string;
+  href: string;
+  color: string;
+  text: string;
+  icon: string | LucideIcon;
+};
+
+const roles: Role[] = [
+  { label: "Software Engineer", href: "/projects?role=software", color: "#6366F1", text: "#fff", icon: "terminal" },
+  { label: "UI/UX Designer", href: "/projects?role=uiux", color: "#F25C5C", text: "#000", icon: "palette" },
+  { label: "Photography", href: "/projects?role=photo", color: "#FFC857", text: "#000", icon: "camera" },
+  { label: "Graphic Designer", href: "/projects?role=graphic", color: "#34D399", text: "#000", icon: PenTool },
+];
+
+/** "Farhan Angga Riyanto" → baris nama. 3+ kata: awal / tengah (kuning) / akhir. 2 kata: awal / akhir (kuning). */
+function nameLines(full: string): { text: string; accent: boolean }[] {
+  const parts = full.trim().split(/\s+/).filter(Boolean).map((w) => w.toUpperCase());
+  if (parts.length === 0) return [];
+  if (parts.length === 1) return [{ text: parts[0], accent: false }];
+  if (parts.length === 2) return [{ text: parts[0], accent: false }, { text: parts[1], accent: true }];
+  return [
+    { text: parts[0], accent: false },
+    { text: parts.slice(1, -1).join(" "), accent: true },
+    { text: parts[parts.length - 1], accent: false },
+  ];
+}
+
+/* ------------------------------------------------------------------ */
+/* CSS khusus hero                                                     */
 /* ------------------------------------------------------------------ */
 const heroCss = `
 /* ---------- dasar (mobile & tablet) ---------- */
@@ -44,13 +84,14 @@ const heroCss = `
 .hero-grid{display:grid;width:100%;gap:1.5rem;align-content:start}
 .hero-photo{order:1;position:relative;margin-inline:auto;aspect-ratio:4/5;width:min(100%,400px)}
 .hero-side{order:2;position:relative;z-index:5;text-align:center;margin-top:calc(clamp(120px,40vw,190px) * -1)}
-.hero-roles{order:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;padding-bottom:.5rem}
+.hero-roles{order:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;padding-bottom:.5rem}
 .hero-hello{font-size:clamp(1.25rem,4.6vw,1.75rem)}
 .hero-name{font-size:clamp(2.75rem,15.5vw,5.75rem);line-height:.95}
 .hero-tagline{max-width:40ch;margin:1.1rem auto 0;font-size:.95rem;line-height:1.6;color:rgba(255,255,255,.72)}
 .hero-fl-kb{left:-3%;top:15%;width:31%}
 .hero-fl-pal{right:-3%;top:25%;width:28%}
 .hero-fl-cam{left:10%;bottom:43%;width:28%}
+.hero-fl-gfx{right:3%;bottom:33%;width:25%}
 .hero-ico-fluid{display:block;position:relative;width:100%;aspect-ratio:1/1}
 .hero-hide-lg{display:block}
 .hero-show-lg{display:none}
@@ -62,8 +103,10 @@ const heroCss = `
 .hero-role-label{flex:0 1 auto;font-size:.78rem;line-height:1.25;text-wrap:balance;text-align:center}
 .hero-mq{display:flex;width:max-content;animation:heromq 30s linear infinite}
 .hero-sheen{animation:herosheen 4.5s ease-in-out infinite}
+.hero-skel{border-radius:.5rem;background:rgba(255,255,255,.1);animation:heropulse 1.4s ease-in-out infinite}
 @keyframes heromq{to{transform:translateX(-50%)}}
 @keyframes herosheen{0%{transform:translateX(-160%) skewX(-20deg)}55%,100%{transform:translateX(700%) skewX(-20deg)}}
+@keyframes heropulse{0%,100%{opacity:.45}50%{opacity:.9}}
 @media (min-width:640px){.hero-inner{padding-inline:2.5rem}.hero-role-label{font-size:.9rem}}
 @media (min-width:768px){.hero-role-card{flex-direction:row;gap:.9rem;padding:.8rem 1rem .8rem .8rem;text-align:left}.hero-role-label{text-align:left;font-size:.95rem}}
 
@@ -82,6 +125,7 @@ const heroCss = `
   .hero-fl-kb{left:-9%;top:17%;width:32%}
   .hero-fl-pal{right:-7%;top:27%;width:29%}
   .hero-fl-cam{left:13%;bottom:24%;width:29%}
+  .hero-fl-gfx{right:-5%;bottom:22%;width:27%}
   .hero-roles{grid-template-columns:1fr;gap:1rem;padding-bottom:3svh;align-self:center}
   .hero-role-card{gap:1rem;padding:.75rem 1.25rem .75rem .75rem;transition:transform .3s}
   .hero-role-card:hover{transform:translateX(-.5rem)}
@@ -89,7 +133,7 @@ const heroCss = `
   .hero-role-label{flex:1 1 0%;font-size:clamp(.95rem,1.4vw,1.5rem);text-align:center}
 }
 @media (min-width:1536px){.hero-inner{padding-inline:3rem}}
-@media (prefers-reduced-motion:reduce){.hero-mq,.hero-sheen{animation:none}}
+@media (prefers-reduced-motion:reduce){.hero-mq,.hero-sheen,.hero-skel{animation:none}}
 `;
 
 /* ------------------------------------------------------------------ */
@@ -109,7 +153,7 @@ function SplitLine({ text, className, delay }: { text: string; className?: strin
           animate={{ y: 0, rotate: 0 }}
           transition={{ duration: 0.9, delay: delay + i * 0.05, ease: EASE }}
         >
-          {c}
+          {c === " " ? "\u00A0" : c}
         </motion.span>
       ))}
     </span>
@@ -140,12 +184,7 @@ function HeroIcon({ item }: { item: HeroIconData }) {
   );
 }
 
-/**
- * Ikon melayang di DEPAN foto (mobile & desktop).
- * - bergerak pelan terus-menerus (naik-turun + goyang sedikit)
- * - saat di-hover / disentuh: membesar dan miring sedikit
- * - desktop: ikut bergeser sedikit mengikuti kursor (efek kedalaman)
- */
+/** Ikon melayang di depan foto. */
 function Float({ sx, sy, depth, delay, item, cls, rot }: {
   sx: MotionValue<number>; sy: MotionValue<number>; depth: number; delay: number;
   item: HeroIconData; cls: string; rot: number;
@@ -177,12 +216,54 @@ function Float({ sx, sy, depth, delay, item, cls, rot }: {
   );
 }
 
+/** Placeholder teks selama data dimuat / bila gagal. */
+function NameSkeleton() {
+  return (
+    <div aria-hidden className="mt-2 flex flex-col gap-3 max-lg:items-center">
+      <div className="hero-skel h-12 w-4/5 lg:h-16" />
+      <div className="hero-skel h-12 w-3/5 lg:h-16" />
+      <div className="hero-skel mt-2 h-4 w-full max-w-[40ch]" />
+      <div className="hero-skel h-4 w-2/3 max-w-[28ch]" />
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* HERO                                                                */
 /* ------------------------------------------------------------------ */
 
 export function Hero() {
-  const [photoSrc, setPhotoSrc] = useState(PHOTO_SRC);
+  const [status, setStatus] = useState<Status>("loading");
+  const [nama, setNama] = useState("");
+  const [deskripsi, setDeskripsi] = useState("");
+  const [photoSrc, setPhotoSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+
+    fetch(API_URL, { signal: ctrl.signal, cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`status ${res.status}`))))
+      .then((json: { data?: Partial<HeroData> | null }) => {
+        const d = json.data;
+        if (!d) {
+          setStatus("empty");
+          return;
+        }
+        setNama(d.namaLengkap?.trim() ?? "");
+        setDeskripsi(d.deskripsi?.trim() ?? "");
+        setPhotoSrc(d.urlFoto?.trim() || null);
+        setStatus("ready");
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        console.error("[hero] gagal memuat data:", err);
+        setStatus("error");
+      });
+
+    return () => ctrl.abort();
+  }, []);
+
+  const lines = nameLines(nama);
 
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -219,27 +300,29 @@ export function Hero() {
 
       {/* latar */}
       <motion.div aria-hidden style={{ backgroundImage: cursorGlow }} className="pointer-events-none absolute inset-0 -z-10" />
-      <motion.span
-        aria-hidden
-        style={{
-          y: bgY,
-          opacity: bgOpacity,
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: "20%",
-          zIndex: -10,
-          textAlign: "center",
-          lineHeight: 1,
-          fontWeight: 700,
-          fontSize: "clamp(8rem,22vw,22rem)",
-          color: "rgba(79,70,229,0.45)",
-          filter: "blur(22px)",
-        }}
-        className={`${mono.className} pointer-events-none select-none`}
-      >
-        FARHAN
-      </motion.span>
+      {status === "ready" && lines[0] && (
+        <motion.span
+          aria-hidden
+          style={{
+            y: bgY,
+            opacity: bgOpacity,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "20%",
+            zIndex: -10,
+            textAlign: "center",
+            lineHeight: 1,
+            fontWeight: 700,
+            fontSize: "clamp(8rem,22vw,22rem)",
+            color: "rgba(79,70,229,0.45)",
+            filter: "blur(22px)",
+          }}
+          className={`${mono.className} pointer-events-none select-none`}
+        >
+          {lines[0].text}
+        </motion.span>
+      )}
 
       <div className="hero-inner">
         <div className="hero-grid">
@@ -253,23 +336,44 @@ export function Hero() {
             >
               Hello, I’am
             </motion.p>
-            <h1 className={`${mono.className} hero-name mt-1 font-bold`}>
-              <SplitLine text={profile.firstName} delay={0.45} />
-              <SplitLine text={profile.accent} delay={0.75} className="text-[#FFC857]" />
-              <SplitLine text={profile.lastName} delay={1.0} />
-            </h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.5 }}
-              className="hero-tagline"
-            >
-              {profile.tagline}
-            </motion.p>
+
+            {status === "loading" && <NameSkeleton />}
+
+            {(status === "error" || status === "empty") && (
+              <p role="status" className="hero-tagline">
+                {status === "error" ? "Data hero gagal dimuat." : "Data hero belum diisi."}
+              </p>
+            )}
+
+            {status === "ready" && (
+              <>
+                <h1 className={`${mono.className} hero-name mt-1 font-bold`}>
+                  {lines.map((l, i) => (
+                    <SplitLine
+                      key={`${i}-${l.text}`}
+                      text={l.text}
+                      delay={0.15 + i * 0.3}
+                      className={l.accent ? "text-[#FFC857]" : undefined}
+                    />
+                  ))}
+                </h1>
+                {deskripsi && (
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 1.0 }}
+                    className="hero-tagline"
+                  >
+                    {deskripsi}
+                  </motion.p>
+                )}
+              </>
+            )}
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.7 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
               style={{ marginTop: "1.5rem" }}
             >
               <Magnetic>
@@ -299,24 +403,30 @@ export function Hero() {
               animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.85, 0.5] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             />
-            <motion.div style={{ x: photoX, y: photoY, scale: photoScale, zIndex: 2 }} className="absolute inset-0 origin-bottom">
-              <motion.div
-                className="absolute inset-0"
-                initial={{ clipPath: "circle(0% at 50% 100%)", y: 60 }}
-                animate={{ clipPath: "circle(150% at 50% 100%)", y: 0 }}
-                transition={{ duration: 1.4, delay: 0.2, ease: EASE }}
-              >
-                <Image
-                  src={photoSrc}
-                  alt="Foto profesional Farhan Angga Riyanto"
-                  fill
-                  priority
-                  sizes="(min-width:1024px) 520px, 100vw"
-                  onError={() => setPhotoSrc(dummyPhoto)}
-                  className="object-contain object-bottom"
-                />
+
+            {status === "ready" && photoSrc && (
+              <motion.div style={{ x: photoX, y: photoY, scale: photoScale, zIndex: 2 }} className="absolute inset-0 origin-bottom">
+                <motion.div
+                  className="absolute inset-0"
+                  initial={{ clipPath: "circle(0% at 50% 100%)", y: 60 }}
+                  animate={{ clipPath: "circle(150% at 50% 100%)", y: 0 }}
+                  transition={{ duration: 1.4, delay: 0.2, ease: EASE }}
+                >
+                  <Image
+                    key={photoSrc}
+                    src={photoSrc}
+                    alt={`Foto profesional ${nama}`}
+                    fill
+                    priority
+                    sizes="(min-width:1024px) 520px, 100vw"
+                    // foto dari Supabase Storage dilewati dari optimizer, jadi tidak perlu mengatur remotePatterns
+                    unoptimized={photoSrc.startsWith("http")}
+                    onError={() => setPhotoSrc(null)}
+                    className="object-contain object-bottom"
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
+            )}
 
             {/* pudar ke latar di bawah foto (mobile) agar nama terbaca */}
             <div aria-hidden className="hero-fade hero-hide-lg" />
@@ -324,6 +434,7 @@ export function Hero() {
             <Float sx={sx} sy={sy} depth={50} delay={0} item={heroIcons[0]} cls="hero-fl-kb" rot={-12} />
             <Float sx={sx} sy={sy} depth={35} delay={0.3} item={heroIcons[1]} cls="hero-fl-pal" rot={12} />
             <Float sx={sx} sy={sy} depth={60} delay={0.6} item={heroIcons[2]} cls="hero-fl-cam" rot={-6} />
+            <Float sx={sx} sy={sy} depth={45} delay={0.9} item={heroIcons[3]} cls="hero-fl-gfx" rot={8} />
           </div>
 
           {/* ---------- role ---------- */}
@@ -354,7 +465,11 @@ export function Hero() {
                     className="hero-role-ico relative grid shrink-0 place-items-center rounded-lg text-black transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-110"
                     style={{ backgroundColor: r.color }}
                   >
-                    <Icon name={r.icon} className="h-6 w-6" />
+                    {typeof r.icon === "string" ? (
+                      <Icon name={r.icon} className="h-6 w-6" />
+                    ) : (
+                      <r.icon aria-hidden className="h-6 w-6" />
+                    )}
                   </span>
                   <span
                     className={`${mono.className} hero-role-label relative font-semibold transition-colors duration-500 group-hover:[color:var(--hc)] group-active:[color:var(--hc)]`}

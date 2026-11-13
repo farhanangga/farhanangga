@@ -7,6 +7,7 @@ import { Topbar } from "@/components/dashboard/topbar";
 import { ShellMain, ShellProvider } from "@/components/dashboard/shell";
 import {
   ACCENT,
+  ACCENT_GRADIENT,
   SIDEBAR_BG,
   SIDEBAR_COOKIE,
   THEME_CSS,
@@ -14,6 +15,9 @@ import {
   sans,
   type Theme,
 } from "@/components/dashboard/shared";
+
+/* Jumlah item menu di sidebar (samakan dengan NAV di sidebar.tsx) */
+const NAV_COUNT = 6;
 
 /* Pembungkus bertema: data-theme menentukan CSS variable (lihat THEME_CSS). */
 function Frame({ theme, children }: { theme: Theme; children: React.ReactNode }) {
@@ -59,19 +63,30 @@ function ShellFallback() {
     <Frame theme="dark">
       <aside
         aria-hidden
-        className={`fixed bottom-4 left-4 top-4 z-40 hidden w-60 rounded-3xl p-3 pt-6 lg:block ${pulse}`}
+        className="fixed bottom-4 left-4 top-4 z-40 hidden w-60 flex-col rounded-3xl p-3 pt-6 lg:flex"
         style={{ background: SIDEBAR_BG }}
       >
-        <div className="mx-4 h-6 w-32 rounded-md bg-white/10" />
-        <div className="mt-9 flex flex-col gap-1.5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-xl bg-white/[0.05]" />
-          ))}
+        <div className={pulse}>
+          <div className="mx-4 h-6 w-32 rounded-md bg-white/10" />
+          <div className="mt-9 flex flex-col gap-1.5">
+            {Array.from({ length: NAV_COUNT }).map((_, i) => (
+              <div key={i} className="h-12 rounded-xl bg-white/[0.05]" />
+            ))}
+          </div>
         </div>
+
+        {/* placeholder tombol panah, posisi sama dengan di Sidebar */}
+        <span
+          className="absolute -right-3.5 top-[2.75rem] box-content grid h-7 w-7 place-items-center rounded-full border-4 border-[color:var(--bg)]"
+          style={{ background: ACCENT_GRADIENT }}
+        />
       </aside>
 
       <header className="fixed inset-x-0 top-0 z-30 border-b border-[color:var(--line)] lg:left-[17rem]">
-        <div aria-hidden className={`mx-auto flex max-w-[1240px] items-center gap-3 px-4 py-4 sm:px-8 lg:px-6 ${pulse}`}>
+        <div
+          aria-hidden
+          className={`mx-auto flex max-w-[1240px] items-center gap-3 px-4 py-4 sm:px-8 lg:px-6 ${pulse}`}
+        >
           <div className="h-12 w-12 rounded-2xl lg:hidden" style={{ background: SIDEBAR_BG }} />
           <div className="h-12 flex-1 rounded-2xl bg-[color:var(--card)]" />
           <div className="h-11 w-20 rounded-full bg-[color:var(--card)]" />
