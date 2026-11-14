@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AnimatePresence,
   MotionConfig,
@@ -15,6 +15,8 @@ import type { ProjectItem, ProjectTab } from "@/lib/data";
 import { mono } from "../fonts";
 import { EASE, Heading } from "../ui";
 import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/projects/projectModal";
+import { PhotoStack } from "./photoStack";
+import { isPhotoTab, tabKey } from "./photoCover";
 
 /* ───────────── Warna per bidang ───────────── */
 
@@ -28,7 +30,7 @@ const PALETTE = {
 /** Tentukan warna dari nama tab; ikon & field lain tetap dari themeOf. */
 function themeForTab(t: ProjectTab): Theme {
   const base = themeOf(t.id);
-  const key = `${t.id} ${t.label} ${t.short ?? ""}`.toLowerCase();
+  const key = tabKey(t);
 
   const color = /graphic/.test(key)
     ? PALETTE.graphic
@@ -90,7 +92,7 @@ const titleV = {
   hover: { y: -4, transition: { duration: 0.4, ease: EASE } },
 };
 
-/* ───────────── Card ───────────── */
+/* ───────────── Card (grid biasa) ───────────── */
 
 function ProjectCard({
   p,
@@ -208,7 +210,7 @@ function ProjectCard({
               </span>
 
               {/* isi bawah */}
-              <span className="absolute inset-x-0 bottom-0 z-10 block min-w-0 p-5">
+              <span className="absolute inset-x-0 bottom-0 z-10 block min-w-0 overflow-hidden p-5">
                 <span className="flex items-center gap-2">
                   <span className="h-px w-6 shrink-0" style={{ background: theme.hex }} />
                   <span
@@ -219,10 +221,14 @@ function ProjectCard({
                   </span>
                 </span>
 
-                {/* judul: maksimal 2 baris */}
+                {/*
+                  judul: maksimal 2 baris.
+                  Catatan: JANGAN menambahkan class "block" bersama line-clamp, karena "block"
+                  menimpa display:-webkit-box milik line-clamp sehingga pemotongan teks tidak jalan.
+                */}
                 <motion.span
                   variants={titleV}
-                  className={`mt-2 line-clamp-2 block break-words text-2xl font-semibold leading-tight ${
+                  className={`mt-2 line-clamp-2 break-words text-2xl font-semibold leading-tight ${
                     big ? "lg:text-3xl" : ""
                   }`}
                 >
@@ -230,7 +236,7 @@ function ProjectCard({
                 </motion.span>
 
                 {/* deskripsi: maksimal 2 baris, sisanya dipotong dengan "…"; teks lengkap ada di modal */}
-                <span className="mt-2 line-clamp-2 block max-w-[56ch] break-words text-sm leading-relaxed text-white/75">
+                <span className="mt-2 line-clamp-2 max-w-[56ch] break-words text-sm leading-relaxed text-white/75">
                   {p.desc}
                 </span>
 
@@ -269,13 +275,21 @@ function ProjectCard({
 /* ───────────── Section ───────────── */
 
 /** Data tab dikirim dari server component (best-project.tsx): tab dari api/projects, isinya best project. */
-export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
+export function BestProjectClient({
+  tabs,
+  covers,
+}: {
+  tabs: ProjectTab[];
+  /** Foto sampul tab fotografi yang dirender di server (RSC), dipetakan menurut id proyek. Opsional. */
+  covers?: Record<string, ReactNode>;
+}) {
   // buka tab pertama yang sudah punya best project
   const [tabId, setTabId] = useState(() => (tabs.find((t) => t.projects.length > 0) ?? tabs[0]).id);
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
 
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
   const theme = themeForTab(tab);
+  const photo = isPhotoTab(tab);
   const totalProjects = tabs.reduce((sum, t) => sum + t.projects.length, 0);
   const n = tab.projects.length;
 
@@ -372,7 +386,7 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
             </p>
           </div>
 
-          {/* grid card, atau pesan bila bidang ini belum punya best project */}
+          {/* konten: pesan kosong, tumpukan foto (photography), atau grid card */}
           <AnimatePresence mode="wait">
             {n === 0 ? (
               <motion.div
@@ -385,6 +399,21 @@ export function BestProjectClient({ tabs }: { tabs: ProjectTab[] }) {
               >
                 <p className="text-white/70">Belum ada proyek terbaik di bidang {tab.label}.</p>
                 <p className="mt-1 text-sm text-white/40">Segera hadir.</p>
+              </motion.div>
+            ) : photo ? (
+              <motion.div
+                key={`${tab.id}-stack`}
+                role="tabpanel"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } }}
+                exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+              >
+                <PhotoStack
+                  projects={tab.projects}
+                  theme={theme}
+                  covers={covers}
+                  onOpen={(index, rect) => setSel({ index, rect })}
+                />
               </motion.div>
             ) : (
               <motion.ul

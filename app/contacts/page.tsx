@@ -25,9 +25,18 @@ type ContactRow = {
 };
 
 /**
- * Satu-satunya sumber data: handler GET di app/api/contacts/route.ts.
- * Route mengembalikan { data: ContactRow[] } (sudah terurut berdasarkan position),
- * jadi di sini dibungkus menjadi ContactData { links }.
+ * Data statis kartu email (TIDAK diambil dari database).
+ * Foto profil tidak ada di sini: dipanggil manual di components/contacts/clientContacts.tsx
+ * lewat "/assets/profil-pic.jpg" (file: public/assets/profil-pic.jpg).
+ */
+const STATIC_PROFILE = {
+  email: "farhanangga8900@gmail.com", // TODO: isi email asli
+  location: "Kota Cirebon", // TODO: isi lokasi
+};
+
+/**
+ * Link sosial: dari handler GET di app/api/contacts/route.ts.
+ * Route mengembalikan { data: ContactRow[] } (sudah terurut berdasarkan position).
  * null = gagal memuat (beda dengan links kosong = memang belum ada kontak).
  */
 async function fetchContact(): Promise<ContactData | null> {
@@ -48,7 +57,8 @@ async function fetchContact(): Promise<ContactData | null> {
       desc,
     })) as ContactLink[];
 
-    return { links } as ContactData;
+    // email dan lokasi statis digabung di sini, jadi selalu terisi
+    return { ...STATIC_PROFILE, links } as ContactData;
   } catch (err) {
     console.error("[Contact] gagal memuat data", err);
     return null;

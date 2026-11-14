@@ -1,23 +1,19 @@
 import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import {
-  AlignLeft,
   Camera,
   CircleAlert,
   CircleCheck,
-  Database,
   ExternalLink,
-  ImageIcon,
   Info,
   Palette,
   PenTool,
   Terminal,
-  User,
   type LucideIcon,
 } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { profile } from "@/lib/data";
-import { ACCENT_GLOW, ACCENT_GRADIENT, Card } from "@/components/dashboard/shared";
+import { Card } from "@/components/dashboard/shared";
 import { ImageDropzone, SubmitButton } from "@/components/dashboard/imageDropzone";
 // Satu-satunya pintu data: handler GET di route ini. Penyimpanan lewat action form ke route yang sama (POST).
 import { GET as getHeroRoute } from "@/app/api/landingPage/hero/edit/route";
@@ -260,37 +256,11 @@ export async function EditHero({ searchParams }: { searchParams: Promise<Params>
     );
   }
 
-  const fromDb = result.row !== null;
   const hero = result.row ?? DEFAULTS;
-  const lines = nameLines(hero.namaLengkap);
   const photo = hero.urlFoto || DEFAULT_PHOTO;
-  const photoSource = !hero.urlFoto
-    ? "Foto bawaan"
-    : hero.urlFoto.includes("/storage/v1/object/public/")
-      ? "Supabase Storage"
-      : "URL luar";
-
-  const stats = [
-    { label: "Baris nama di hero", value: lines.length, sub: hero.namaLengkap, icon: User, hero: true },
-    { label: "Panjang deskripsi", value: hero.deskripsi.length, sub: `dari ${MAX_DESC} karakter`, icon: AlignLeft },
-    { label: "Sumber foto", value: photoSource, sub: hero.urlFoto ? "url_foto terisi" : "url_foto kosong", icon: ImageIcon },
-    {
-      label: "Status data",
-      value: fromDb ? "Tersimpan" : "Bawaan",
-      sub: fromDb ? "dibaca dari tabel landing_hero" : "tabel belum berisi data",
-      icon: Database,
-    },
-  ];
 
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className={`text-sm ${muted}`}>Atur nama, deskripsi, dan foto di bagian hero landing page.</p>
-        <a href="/" target="_blank" rel="noreferrer" className={`${linkBtn} self-start`}>
-          <ExternalLink size={15} /> Lihat website
-        </a>
-      </div>
-
       {saved === "1" && (
         <div role="status" className="mt-5 flex items-start gap-3 rounded-2xl bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-600">
           <CircleCheck size={18} className="mt-px shrink-0" />
@@ -307,40 +277,8 @@ export async function EditHero({ searchParams }: { searchParams: Promise<Params>
         </div>
       )}
 
-      {/* ringkasan data saat ini */}
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => {
-          const big = typeof s.value === "number";
-          const body = (
-            <>
-              <div className="flex items-center justify-between">
-                <span className={`text-sm ${s.hero ? "text-white/75" : muted}`}>{s.label}</span>
-                <s.icon size={16} className={s.hero ? "text-white/75" : muted} />
-              </div>
-              <p
-                className={`mt-3 font-semibold tabular-nums ${big ? "text-3xl" : "text-xl leading-9"} ${s.hero ? "text-white" : ""}`}
-              >
-                {s.value}
-              </p>
-              <p className={`mt-1 truncate text-xs ${s.hero ? "text-white/70" : muted}`} title={s.sub}>
-                {s.sub}
-              </p>
-            </>
-          );
-          return s.hero ? (
-            <div key={s.label} className="rounded-3xl p-5" style={{ background: ACCENT_GRADIENT, boxShadow: ACCENT_GLOW }}>
-              {body}
-            </div>
-          ) : (
-            <Card key={s.label} className="p-5">
-              {body}
-            </Card>
-          );
-        })}
-      </div>
-
       {/* pratinjau: replika hero desktop dari data tersimpan */}
-      <Card className="mt-4 p-6">
+      <Card className="mt-6 p-6">
         <CardHead title="Pratinjau" desc="Tampilan hero di desktop, dari data yang tersimpan." />
         <HeroPreview hero={hero} photo={photo} />
       </Card>
@@ -417,12 +355,7 @@ export function EditHeroSkeleton() {
   return (
     <div role="status" aria-busy="true" aria-label="Memuat hero" className={pulse}>
       <div className="h-5 w-72 max-w-full rounded-lg bg-[color:var(--chip)]" />
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-32 rounded-3xl bg-[color:var(--card)]" />
-        ))}
-      </div>
-      <div className="mt-4 h-96 rounded-3xl bg-[color:var(--card)]" />
+      <div className="mt-6 h-96 rounded-3xl bg-[color:var(--card)]" />
       <div className="mt-4 h-96 rounded-3xl bg-[color:var(--card)]" />
     </div>
   );

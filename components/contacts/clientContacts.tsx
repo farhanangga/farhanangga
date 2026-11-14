@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, type FormEvent, type ReactNode } from "react";
+import Image from "next/image";
 import {
   AnimatePresence,
   MotionConfig,
@@ -25,7 +26,11 @@ const ICONS: Record<ContactIcon, (props: { size?: number }) => ReactNode> = {
   instagram: (p) => <FaInstagram {...p} />,
 };
 
-const TITLE_WORDS = ["My","Contacts"];
+const TITLE_WORDS = ["My", "Contacts"];
+
+/** File: public/assets/profil-pic.jpg */
+const PROFILE_PIC = "/assets/profil-pic.jpg";
+const NAME = "Farhan Angga Riyanto";
 
 const wordsParent: Variants = {
   hidden: {},
@@ -56,6 +61,31 @@ function useSpotlight(rgb: string, radius: number, alpha: number) {
     },
   };
   return { glow, handlers };
+}
+
+/* ───────────── Foto profil ───────────── */
+
+function ProfilePhoto() {
+  const th = themeOf(null);
+
+  return (
+    <div className="relative h-24 w-24 shrink-0 self-start sm:h-28 sm:w-28 sm:self-center">
+      <span
+        aria-hidden
+        className="absolute -inset-1.5 rounded-full opacity-50 blur-md"
+        style={{ background: th.hex }}
+      />
+      <Image
+        src={PROFILE_PIC}
+        alt="Foto profil Farhan Angga Riyanto"
+        width={112}
+        height={112}
+        priority
+        className="relative h-full w-full rounded-full object-cover"
+        style={{ border: `2px solid ${th.hex}` }}
+      />
+    </div>
+  );
 }
 
 /* ───────────── Card kanal ───────────── */
@@ -103,7 +133,7 @@ function LinkCard({ item, index }: { item: ContactItem; index: number }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${item.platform}: ${item.handle} (buka di tab baru)`}
-            className="group relative flex h-full min-h-[210px] flex-col p-5 outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:p-6"
+            className="group relative flex h-full min-h-[190px] flex-col p-5 sm:min-h-[210px] outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:p-6"
           >
             <motion.span
               aria-hidden
@@ -359,12 +389,12 @@ export function ContactClient({ data }: { data: ContactData }) {
             </motion.span>
           </div>
 
-          {/* email utama */}
+          {/* email utama + foto profil */}
           <motion.div
             initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, delay: 0.45, ease: EASE }}
-            className="group relative mt-10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:mt-12 sm:p-7"
+            className="group relative mt-8 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:mt-12 sm:p-7"
             {...emailFx.handlers}
           >
             <motion.span
@@ -373,28 +403,41 @@ export function ContactClient({ data }: { data: ContactData }) {
               style={{ background: emailFx.glow }}
             />
             <div className="relative">
-              <p className="text-sm text-white/50">Email</p>
-              <div className="mt-2">
-                <CopyEmail email={data.email} />
-              </div>
-              <div className="mt-5 flex flex-col gap-2 text-sm text-white/60 sm:flex-row sm:items-center sm:gap-6">
-                <span className="inline-flex items-center gap-2">
-                  <MapPin size={15} style={{ color: theme.hex }} /> {data.location}
-                </span>
-                {data.availability && (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="relative grid h-2.5 w-2.5 place-items-center" aria-hidden>
-                      <motion.span
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: theme.hex }}
-                        animate={{ scale: [1, 2.6], opacity: [0.6, 0] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-                      />
-                      <span className="h-2 w-2 rounded-full" style={{ background: theme.hex }} />
+              {/* identitas: foto + nama + lokasi + ketersediaan */}
+              <div className="flex items-center gap-4 sm:gap-6">
+                <ProfilePhoto />
+
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold leading-snug sm:text-2xl">{NAME}</p>
+                  <div className="mt-2 flex flex-col gap-1.5 text-sm text-white/60 sm:flex-row sm:items-center sm:gap-5">
+                    <span className="inline-flex items-center gap-2">
+                      <MapPin size={15} className="shrink-0" style={{ color: theme.hex }} />
+                      {data.location}
                     </span>
-                    {data.availability}
-                  </span>
-                )}
+                    {data.availability && (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="relative grid h-2.5 w-2.5 shrink-0 place-items-center" aria-hidden>
+                          <motion.span
+                            className="absolute inset-0 rounded-full"
+                            style={{ background: theme.hex }}
+                            animate={{ scale: [1, 2.6], opacity: [0.6, 0] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+                          />
+                          <span className="h-2 w-2 rounded-full" style={{ background: theme.hex }} />
+                        </span>
+                        {data.availability}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* email */}
+              <div className="mt-5 border-t border-white/10 pt-5 sm:mt-6 sm:pt-6">
+                <p className="text-sm text-white/50">Email</p>
+                <div className="mt-2">
+                  <CopyEmail email={data.email} />
+                </div>
               </div>
             </div>
           </motion.div>

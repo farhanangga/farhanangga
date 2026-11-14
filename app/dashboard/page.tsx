@@ -8,6 +8,7 @@ import {
   CircleCheck,
   ExternalLink,
   FolderKanban,
+  Globe,
   ImageIcon,
   Link2,
   Plus,
@@ -183,6 +184,9 @@ async function Content() {
           </Link>
           <Link href="/dashboard/contacts/new" className={linkBtn}>
             <Plus size={15} /> Kontak
+          </Link>
+          <Link href="/" className={linkBtn}>
+            <Globe size={15} /> Website
           </Link>
         </div>
       </div>

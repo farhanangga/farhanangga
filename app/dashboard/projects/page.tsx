@@ -208,14 +208,28 @@ function ListView({ rows, delHref }: { rows: Project[]; delHref: DelHref }) {
 }
 
 /* ── tampilan kartu ────────────────────────────────────── */
-function GridView({ rows, delHref }: { rows: Project[]; delHref: DelHref }) {
+/** tallCover: cover 4/5 (dipakai saat filter Photographer aktif); selain itu 16/10. */
+function GridView({
+  rows,
+  delHref,
+  tallCover = false,
+}: {
+  rows: Project[];
+  delHref: DelHref;
+  tallCover?: boolean;
+}) {
   return (
     <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((p) => (
         <li key={p.id} className="contents">
           <Card className="group relative flex flex-col overflow-hidden">
             <div className="relative">
-              <Thumb p={p} className="aspect-[16/10] w-full [&_img]:transition-transform [&_img]:duration-500 group-hover:[&_img]:scale-[1.04] motion-reduce:[&_img]:transition-none" />
+              <Thumb
+                p={p}
+                className={`${
+                  tallCover ? "aspect-[4/5]" : "aspect-[16/10]"
+                } w-full [&_img]:transition-transform [&_img]:duration-500 group-hover:[&_img]:scale-[1.04] motion-reduce:[&_img]:transition-none`}
+              />
               <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
                 {p.tabLabel}
               </span>
@@ -311,6 +325,12 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
   const all = await getProjects();
 
   const categories = Array.from(new Map(all.map((p) => [p.category, p.tabLabel] as [string, string])).entries());
+
+  // filter Photographer aktif → cover kartu dibuat 4/5 (hanya berlaku di tampilan kartu)
+  const photoFilter =
+    cat !== "all" &&
+    /photo|foto/i.test(`${cat} ${categories.find(([c]) => c === cat)?.[1] ?? ""}`);
+
   const keyword = q.trim().toLowerCase();
   const rows = all.filter(
     (p) =>
@@ -476,7 +496,7 @@ async function Content({ searchParams }: { searchParams: Promise<Params> }) {
           )}
         </Card>
       ) : v === "grid" ? (
-        <GridView rows={rows} delHref={delHref} />
+        <GridView rows={rows} delHref={delHref} tallCover={photoFilter} />
       ) : (
         <ListView rows={rows} delHref={delHref} />
       )}
