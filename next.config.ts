@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // kualitas yang boleh dipakai di <Image quality={...}>: 30 = latar buram, 75 = bawaan, 95 = foto utama galeri
+    qualities: [30, 75, 95],
     remotePatterns: [
       {
         protocol: "https",

@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+} from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -85,6 +93,7 @@ function ShotImage({
   theme,
   fit = "cover",
   quality,
+  onSize,
 }: {
   src: string;
   alt: string;
@@ -95,6 +104,8 @@ function ShotImage({
   fit?: "cover" | "contain";
   /** kualitas kompresi 1–100 (bawaan Next.js: 75) */
   quality?: number;
+  /** dipanggil saat gambar selesai dimuat, dengan ukuran aslinya (piksel) */
+  onSize?: (w: number, h: number) => void;
 }) {
   // 0 = lewat optimizer Next.js, 1 = file asli apa adanya, 2 = placeholder
   const [level, setLevel] = useState<0 | 1 | 2>(0);
@@ -133,7 +144,30 @@ function ShotImage({
       unoptimized={level === 1}
       draggable={false}
       onError={() => setLevel((l) => (l === 0 ? 1 : 2))}
+      onLoad={(e) => {
+        const el = e.currentTarget;
+        if (el.naturalWidth && el.naturalHeight) onSize?.(el.naturalWidth, el.naturalHeight);
+      }}
       className={`select-none ${fit === "contain" ? "object-contain" : "object-cover"}`}
+    />
+  );
+}
+
+/** Latar buram dari gambar yang sama: mengisi ruang kosong di sekitar foto tanpa memotong foto utama. */
+function Backdrop({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return null;
+  return (
+    <Image
+      src={src}
+      alt=""
+      aria-hidden
+      fill
+      sizes="96px"
+      quality={30}
+      draggable={false}
+      onError={() => setFailed(true)}
+      className="pointer-events-none origin-center scale-125 select-none object-cover opacity-60 blur-2xl"
     />
   );
 }
@@ -157,10 +191,15 @@ function Gallery({ p, theme }: { p: ProjectItem; theme: Theme }) {
   const [hover, setHover] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
+  // rasio asli (lebar / tinggi) tiap gambar, diisi saat gambarnya selesai dimuat
+  const [ratios, setRatios] = useState<Record<number, number>>({});
   const total = p.images.length;
   const many = total > 1;
   const paused = userPaused || hover || dragging;
   const autoplay = !reduced && many;
+  // Mobile: tinggi area foto mengikuti rasio asli gambar (dibatasi) supaya foto memenuhi lebar tanpa ruang kosong
+  const ratio = ratios[index];
+  const stageRatio = ratio ? Math.min(2.4, Math.max(0.62, ratio)) : 1.6;
 
   const go = useCallback(
     (to: number, d?: number) => {
@@ -187,7 +226,8 @@ function Gallery({ p, theme }: { p: ProjectItem; theme: Theme }) {
       <style>{`@keyframes pj-story{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
 
       <div
-        className="relative aspect-[16/10] overflow-hidden bg-[#080817] md:aspect-auto md:min-h-0 md:flex-1"
+        className="relative aspect-[var(--ar)] max-h-[68dvh] w-full overflow-hidden bg-[#080817] md:aspect-auto md:max-h-none md:min-h-0 md:flex-1"
+        style={{ "--ar": stageRatio } as CSSProperties}
         onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
         onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
       >
@@ -211,8 +251,9 @@ function Gallery({ p, theme }: { p: ProjectItem; theme: Theme }) {
             }}
             className={`absolute inset-0 ${many ? "cursor-grab active:cursor-grabbing" : ""}`}
           >
-            {/* gambar utama: ditampilkan utuh sesuai rasio aslinya (bisa ada ruang kosong), resolusi tinggi */}
+            {/* gambar utama: ditampilkan utuh (tidak terpotong) dan dibuat sebesar mungkin; sisa ruang diisi latar buram */}
             <div className="absolute inset-0">
+              <Backdrop src={p.images[index] ?? ""} />
               <Shot
                 src={p.images[index] ?? ""}
                 alt={`${p.title}, gambar ${index + 1} dari ${total}`}
@@ -221,13 +262,16 @@ function Gallery({ p, theme }: { p: ProjectItem; theme: Theme }) {
                 fit="contain"
                 priority={index === 0}
                 theme={theme}
+                onSize={(w, h) =>
+                  setRatios((r) => (r[index] === w / h ? r : { ...r, [index]: w / h }))
+                }
               />
             </div>
           </motion.div>
         </AnimatePresence>
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/50 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/50 to-transparent" />
 
         {/* bar progres ala stories */}
         {many && (
