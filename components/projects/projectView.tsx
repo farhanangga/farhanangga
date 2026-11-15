@@ -292,6 +292,10 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const active = resolveTab(params.get("role"), tabs);
   const activeId = active?.id ?? null;
   const theme = themeForTab(active);
+  // warna teks/isi panel pencarian mengikuti kontras warna bidang (putih atau hitam)
+  const darkInk = theme.ink.toLowerCase() === "#000000" || theme.ink.toLowerCase() === "#000";
+  const inkRgb = darkInk ? "0,0,0" : "255,255,255";
+  const fieldBg = darkInk ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.22)";
   const copy = active
     ? (COPY[kindOf(active) ?? ""] ?? { title: active.label, text: COPY.all.text })
     : COPY.all;
@@ -481,26 +485,29 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
             </span>
           </div>
 
-          {/* pencarian: bar lebar di atas filter, menyala sesuai warna bidang saat fokus */}
-          <div className="mt-8">
+          {/* pencarian + saran tools: panel solid, warnanya mengikuti bidang aktif */}
+          <motion.div
+            className="mt-8 rounded-[2rem] p-3 sm:p-4"
+            initial={false}
+            animate={{
+              backgroundColor: theme.hex,
+            }}
+            transition={{ duration: 0.5, ease: EASE }}
+            style={{ color: theme.ink }}
+          >
             <motion.div
               role="search"
               onClick={() => searchRef.current?.focus()}
               animate={{
-                borderColor: focused ? theme.hex : "rgba(255,255,255,0.1)",
+                backgroundColor: fieldBg,
                 boxShadow: focused
-                  ? `0 0 0 4px rgba(${theme.rgb},0.16), 0 12px 40px -12px rgba(${theme.rgb},0.55)`
-                  : "0 0 0 0px rgba(0,0,0,0), 0 0 0 0 rgba(0,0,0,0)",
+                  ? `0 0 0 3px rgba(${inkRgb},0.35)`
+                  : `0 0 0 0px rgba(${inkRgb},0)`,
               }}
               transition={{ duration: 0.25, ease: EASE }}
-              className="flex h-14 w-full cursor-text items-center gap-3 rounded-full border bg-white/[0.04] pl-5 pr-2.5 backdrop-blur"
+              className="flex h-14 w-full cursor-text items-center gap-3 rounded-full pl-5 pr-2.5"
             >
-              <Search
-                size={19}
-                aria-hidden
-                className="shrink-0 transition-colors"
-                style={{ color: focused || searching ? theme.hex : "rgba(255,255,255,0.4)" }}
-              />
+              <Search size={19} aria-hidden className="shrink-0" style={{ color: theme.ink }} />
               <input
                 ref={searchRef}
                 type="search"
@@ -518,7 +525,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                 aria-label="Cari proyek"
                 autoComplete="off"
                 spellCheck={false}
-                className="min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-white/40 [&::-webkit-search-cancel-button]:hidden"
+                className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-[color:var(--ph)] [&::-webkit-search-cancel-button]:hidden"
+                style={{ color: theme.ink, ["--ph" as string]: `rgba(${inkRgb},0.6)` }}
               />
 
               <AnimatePresence mode="wait" initial={false}>
@@ -532,8 +540,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                     className="flex shrink-0 items-center gap-2"
                   >
                     <span
-                      className={`${mono.className} rounded-full px-3 py-1 text-xs font-medium`}
-                      style={{ background: `rgba(${theme.rgb},0.18)`, color: theme.hex }}
+                      className={`${mono.className} rounded-full px-3 py-1 text-xs font-semibold`}
+                      style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
                       {entries.length} hasil
                     </span>
@@ -544,7 +552,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                         clearQuery();
                       }}
                       aria-label="Hapus pencarian"
-                      className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white/80 outline-none transition-colors hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+                      className="grid h-9 w-9 place-items-center rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white/60"
+                      style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
                       <X size={16} />
                     </button>
@@ -556,7 +565,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.18 }}
-                    className={`${mono.className} mr-2 hidden h-7 min-w-7 shrink-0 items-center justify-center rounded-md border border-white/15 bg-white/[0.06] px-2 text-xs text-white/50 sm:inline-flex`}
+                    className={`${mono.className} mr-2 hidden h-7 min-w-7 shrink-0 items-center justify-center rounded-md px-2 text-xs sm:inline-flex`}
+                    style={{ background: `rgba(${inkRgb},0.14)`, color: `rgba(${inkRgb},0.75)` }}
                     aria-hidden
                   >
                     /
@@ -576,8 +586,10 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                   transition={{ duration: 0.25, ease: EASE }}
                   className="overflow-hidden"
                 >
-                  <div className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 pt-3 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-                    <span className="shrink-0 text-xs text-white/40">Coba cari</span>
+                  <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 pt-3 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+                    <span className="shrink-0 text-xs font-semibold" style={{ color: theme.ink }}>
+                      Coba cari
+                    </span>
                     {popularTools.map((t) => (
                       <button
                         key={t}
@@ -586,7 +598,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                           changeQuery(t);
                           searchRef.current?.focus();
                         }}
-                        className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/70 outline-none transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+                        className="shrink-0 rounded-full px-3 py-1 text-xs font-medium outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white/60"
+                        style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                       >
                         {t}
                       </button>
@@ -595,7 +608,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
 
           {/* filter bidang */}
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

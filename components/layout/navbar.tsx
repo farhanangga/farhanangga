@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -109,8 +110,20 @@ function NavbarInner() {
         className="fixed inset-x-0 top-0 z-[9999] px-4 pt-4 sm:px-8 sm:pt-6"
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 max-md:rounded-full max-md:border max-md:border-white/10 max-md:bg-black/50 max-md:py-1.5 max-md:pl-6 max-md:pr-1.5 max-md:backdrop-blur-md">
-          <Link href="/" className={`${mono.className} text-2xl font-bold transition-transform hover:scale-110`}>
-            FA
+          {/* logo: file ada di public/assets/icon.png */}
+          <Link
+            href="/"
+            aria-label="Beranda"
+            className="block shrink-0 transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
+          >
+            <Image
+              src="/assets/icon.png"
+              alt="Logo FA"
+              width={44}
+              height={44}
+              priority
+              className="h-9 w-9 object-contain sm:h-11 sm:w-11"
+            />
           </Link>
 
           {/* ---------------- Desktop nav ---------------- */}
