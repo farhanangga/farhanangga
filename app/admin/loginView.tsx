@@ -2,15 +2,52 @@
 
 import { useState, useTransition } from "react";
 import { MotionConfig, motion } from "framer-motion";
-import { AlertCircle, Eye, EyeOff, Loader2, LogIn, Lock, User } from "lucide-react";
-import { JetBrains_Mono } from "next/font/google";
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Layers,
+  Loader2,
+  LogIn,
+  Lock,
+  Mail,
+  PanelsTopLeft,
+  User,
+  Activity,
+} from "lucide-react";
+import { Poppins } from "next/font/google";
 import { loginAction } from "./action";
 
-const mono = JetBrains_Mono({ subsets: ["latin"] });
+const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/* warna aksen */
-const ACCENT = { hex: "#7C6CFF", ink: "#0B0B24", rgb: "124,108,255" };
+/* warna mengikuti dashboard: sidebar navy, latar lavender, aksen indigo */
+const C = {
+  page: "#E8EAF6",
+  navy: "#2E2F52",
+  ink: "#1F1B3A",
+  muted: "#7A7D99",
+  field: "#EEF0F9",
+  accent: "#6870E8",
+  accentDeep: "#4F57C7",
+};
+
+function Brand({ dark = false }: { dark?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span
+        className="grid h-8 w-8 place-items-center rounded-lg"
+        style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})` }}
+        aria-hidden
+      >
+        <span className="h-3 w-3 rounded-[3px] bg-white" />
+      </span>
+      <span className={`text-[15px] font-semibold ${dark ? "text-white" : ""}`} style={dark ? undefined : { color: C.ink }}>
+        Portofolio <span className={dark ? "text-white/50" : ""} style={dark ? undefined : { color: C.muted }}>Admin</span>
+      </span>
+    </div>
+  );
+}
 
 export function LoginView() {
   const [showPw, setShowPw] = useState(false);
@@ -28,87 +65,58 @@ export function LoginView() {
   }
 
   const inputCls =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-white placeholder:text-white/30 outline-none transition-colors focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-white/20";
+    "w-full rounded-full bg-[#EEF0F9] py-3.5 pl-12 pr-4 text-sm text-[#1F1B3A] placeholder:text-[#9A9DB8] outline-none ring-2 ring-transparent transition focus:bg-white focus:ring-[#6870E8]/60 disabled:opacity-60";
 
   return (
     <MotionConfig reducedMotion="user">
       <main
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0B0B24] px-5 py-16 text-white"
-        style={{ ["--accent" as string]: ACCENT.hex }}
+        className={`${poppins.className} flex min-h-screen items-center justify-center px-5 py-12`}
+        style={{ background: `linear-gradient(160deg, ${C.page} 0%, #F4F5FC 100%)`, color: C.ink }}
       >
-        {/* dot grid */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px)",
-            backgroundSize: "26px 26px",
-            maskImage: "radial-gradient(ellipse 75% 55% at 50% 40%, black, transparent)",
-            WebkitMaskImage: "radial-gradient(ellipse 75% 55% at 50% 40%, black, transparent)",
-          }}
-        />
-        {/* blob cahaya */}
         <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -left-32 top-16 h-[380px] w-[380px] rounded-full opacity-25 blur-[120px]"
-          style={{ backgroundColor: ACCENT.hex }}
-          animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          aria-hidden
-          className="pointer-events-none absolute -right-32 bottom-10 h-[340px] w-[340px] rounded-full opacity-15 blur-[120px]"
-          style={{ backgroundColor: ACCENT.hex }}
-          animate={{ x: [0, -40, 0], y: [0, -40, 0] }}
-          transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        <div className="relative w-full max-w-[440px]">
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className={`${mono.className} text-sm text-white/50`}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+          className="grid w-full max-w-[920px] overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_60px_-24px_rgba(46,47,82,0.35)] md:grid-cols-[0.9fr_1.1fr]"
+        >
+          {/* panel navy, mirip sidebar dashboard */}
+          <aside
+            className="relative hidden flex-col justify-between p-10 md:flex"
+            style={{ background: C.navy }}
           >
-            Portofolio <span className="text-white/25">/</span>{" "}
-            <span style={{ color: ACCENT.hex }}>Masuk</span>
-          </motion.p>
+            <Brand dark />
 
-          <h1 className={`${mono.className} mt-3 overflow-hidden pb-2 text-4xl font-bold leading-[1.05] sm:text-5xl`}>
-            <motion.span
-              className="block"
-              initial={{ y: "115%" }}
-              animate={{ y: 0 }}
-              transition={{ duration: 0.8, ease: EASE }}
-            >
-              Selamat Datang
-            </motion.span>
-          </h1>
+            <div>
+              <h2 className="text-3xl font-semibold leading-tight text-white">
+                Kelola portofolio dalam satu tempat
+              </h2>
+              <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-white/60">
+                Perbarui konten yang tampil di website portofolio langsung dari dashboard.
+              </p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
-            className="mt-3 max-w-[40ch] leading-relaxed text-white/70"
-          >
-            Masuk untuk mengelola dashboard Anda.
-          </motion.p>
+            </div>
 
-          <motion.form
-            onSubmit={onSubmit}
-            noValidate
-            initial={{ opacity: 0, y: 32, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
-            className="mt-8 rounded-xl bg-[#14142B] p-6 sm:p-7"
-          >
-            <div className="space-y-5">
+            <p className="text-xs text-white/40">Khusus admin</p>
+          </aside>
+
+          {/* form */}
+          <section className="p-7 sm:p-10">
+            <div className="mb-8 md:hidden">
+              <Brand />
+            </div>
+
+            <h1 className="text-3xl font-semibold leading-tight sm:text-[2rem]">Selamat datang</h1>
+            <p className="mt-2 text-sm" style={{ color: C.muted }}>
+              Masuk untuk mengelola dashboard Anda.
+            </p>
+
+            <form onSubmit={onSubmit} noValidate className="mt-8 space-y-5">
               <div>
-                <label htmlFor="username" className="mb-2 block text-sm text-white/70">
+                <label htmlFor="username" className="mb-2 block text-sm font-medium text-[#4A4D6A]">
                   Username
                 </label>
                 <div className="relative">
-                  <User size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                  <User size={17} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#9A9DB8]" />
                   <input
                     id="username"
                     name="username"
@@ -122,11 +130,11 @@ export function LoginView() {
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-sm text-white/70">
+                <label htmlFor="password" className="mb-2 block text-sm font-medium text-[#4A4D6A]">
                   Kata sandi
                 </label>
                 <div className="relative">
-                  <Lock size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                  <Lock size={17} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#9A9DB8]" />
                   <input
                     id="password"
                     name="password"
@@ -140,9 +148,9 @@ export function LoginView() {
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
                     aria-label={showPw ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-                    className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-white/50 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+                    className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[#9A9DB8] outline-none transition-colors hover:bg-[#E3E6F6] hover:text-[#4F57C7] focus-visible:ring-2 focus-visible:ring-[#6870E8]/60"
                   >
-                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </div>
@@ -153,7 +161,7 @@ export function LoginView() {
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, ease: EASE }}
-                    className="flex items-center gap-2 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300"
+                    className="flex items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600"
                   >
                     <AlertCircle size={16} className="shrink-0" /> {error}
                   </motion.p>
@@ -163,10 +171,10 @@ export function LoginView() {
               <motion.button
                 type="submit"
                 disabled={pending}
-                whileHover={{ scale: pending ? 1 : 1.02 }}
+                whileHover={{ scale: pending ? 1 : 1.015 }}
                 whileTap={{ scale: pending ? 1 : 0.98 }}
-                className="flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-70"
-                style={{ background: ACCENT.hex, color: ACCENT.ink }}
+                className="flex w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(79,87,199,0.7)] outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[#6870E8]/60 focus-visible:ring-offset-2 disabled:opacity-70"
+                style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})` }}
               >
                 {pending ? (
                   <>
@@ -178,9 +186,9 @@ export function LoginView() {
                   </>
                 )}
               </motion.button>
-            </div>
-          </motion.form>
-        </div>
+            </form>
+          </section>
+        </motion.div>
       </main>
     </MotionConfig>
   );
