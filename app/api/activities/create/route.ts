@@ -8,7 +8,7 @@ const ID_DIGITS = 4;
 const IMG_DIGITS = 8;
 const MAX_IMAGES = 10;
 const MAX_SIZE = 5 * 1024 * 1024;
-const BUCKET = process.env.SUPABASE_ACTIVITIES_BUCKET ?? "activitiesImages";
+const BUCKET = process.env.SUPABASE_ACTIVITIES_BUCKET ?? "activityImages";
 
 type Uploaded = { names: string[]; paths: string[] };
 
