@@ -287,7 +287,14 @@ export async function EditHero({ searchParams }: { searchParams: Promise<Params>
       <Card className="mt-4 p-6">
         <CardHead title="Edit hero" desc="Data disimpan ke tabel landing_hero dan langsung dipakai di website." />
 
-        <form action={API} method="post" encType="multipart/form-data" autoComplete="off" className="space-y-5">
+        {/* max-sm:pb-20 = ruang agar field terakhir tidak tertutup bar fixed di mobile */}
+        <form
+          action={API}
+          method="post"
+          encType="multipart/form-data"
+          autoComplete="off"
+          className="space-y-5 max-sm:pb-20"
+        >
           {/* foto saat ini tetap dipakai bila tidak ada unggahan baru */}
           <input type="hidden" name="url_foto" defaultValue={hero.urlFoto ?? ""} />
 
@@ -335,12 +342,19 @@ export async function EditHero({ searchParams }: { searchParams: Promise<Params>
             </Field>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-[color:var(--chip)] pt-5">
+          {/* Desktop: baris biasa di bawah form. Mobile: button bar fixed di bawah layar. */}
+          <div
+            className="flex items-center justify-between gap-3 border-t border-[color:var(--chip)] pt-5
+              max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-40
+              max-sm:bg-[color:var(--card)] max-sm:px-4 max-sm:pt-3
+              max-sm:pb-[calc(env(safe-area-inset-bottom)+0.75rem)]
+              max-sm:shadow-[0_-8px_24px_rgba(0,0,0,0.25)]"
+          >
             <p className={`hidden items-center gap-2 text-sm sm:flex ${muted}`}>
               <Info size={16} className="shrink-0" />
               Nama, deskripsi, dan foto disimpan bersamaan.
             </p>
-            <div className="ml-auto">
+            <div className="ml-auto max-sm:ml-0 max-sm:w-full max-sm:[&_button]:w-full">
               <SubmitButton>Simpan hero</SubmitButton>
             </div>
           </div>

@@ -352,7 +352,8 @@ export async function EditAbout({ searchParams }: { searchParams: Promise<Params
           desc={result.row ? "Data disimpan ke tabel landing_about." : "Tabel masih kosong. Isi bawaan ditampilkan; simpan untuk membuat datanya."}
         />
 
-        <form action={API_ABOUT} method="post" autoComplete="off" className="space-y-5">
+        {/* max-sm:pb-20 = ruang agar field terakhir tidak tertutup bar fixed di mobile */}
+        <form action={API_ABOUT} method="post" autoComplete="off" className="space-y-5 max-sm:pb-20">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Lokasi" htmlFor="lokasi" required>
               <input id="lokasi" name="lokasi" required maxLength={80} defaultValue={about.lokasi} className={inputCls} placeholder="Cirebon, Indonesia" />
@@ -415,8 +416,17 @@ export async function EditAbout({ searchParams }: { searchParams: Promise<Params
             <span>(otomatis dari api/projects, tidak diedit di sini)</span>
           </div>
 
-          <div className="flex items-center justify-end border-t border-[color:var(--chip)] pt-5">
-            <SubmitButton>Simpan Tentang saya</SubmitButton>
+          {/* Desktop: baris biasa rata kanan. Mobile: button bar fixed di bawah layar. */}
+          <div
+            className="flex items-center justify-end border-t border-[color:var(--chip)] pt-5
+              max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-40
+              max-sm:bg-[color:var(--card)] max-sm:px-4 max-sm:pt-3
+              max-sm:pb-[calc(env(safe-area-inset-bottom)+0.75rem)]
+              max-sm:shadow-[0_-8px_24px_rgba(0,0,0,0.25)]"
+          >
+            <div className="max-sm:w-full max-sm:[&_button]:w-full">
+              <SubmitButton>Simpan Tentang saya</SubmitButton>
+            </div>
           </div>
         </form>
       </Card>

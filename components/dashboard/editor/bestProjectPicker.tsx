@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
-import { ACCENT_GRADIENT } from "./shared";
+import { ACCENT_GRADIENT } from "../shared";
 
 export type PickProject = { id: string; title: string; type: string; cover: string | null };
 export type PickTab = { id: string; label: string; short: string; projects: PickProject[] };

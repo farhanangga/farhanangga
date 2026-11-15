@@ -17,7 +17,7 @@ import type {
   AwardRow,
   ExpRow,
   OrgRow,
-} from "@/components/dashboard/experienceEditor";
+} from "@/components/dashboard/editor/experienceEditor";
 
 const TABLES = {
   experience: "landing_experience",

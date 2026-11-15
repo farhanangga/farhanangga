@@ -5,11 +5,12 @@ import { getSession } from "@/lib/session";
 // GET  → daftar project_id best project saat ini, urut menurut position (hanya admin)
 // POST → simpan pilihan dari dashboard (field "best" berulang, urutan = urutan tampil)
 //
-// Aturan: maksimal 6 proyek per bidang/tab. Boleh kurang dari 6.
+// Jumlah best project TIDAK dibatasi (per bidang maupun total).
 // Penyimpanan lewat fungsi SQL replace_best_projects (lihat best_projects_admin.sql).
-const MAX_PER_TAB = 6;
-const MAX_TOTAL = 60; // batas wajar agar request aneh ditolak
 const BACK = "/dashboard/landingPage";
+
+/** Ukuran potongan saat memeriksa id ke database (agar URL query tidak terlalu panjang). */
+const CHUNK = 100;
 
 /** Klien service role: hanya dipakai di server, setelah session admin dicek. */
 function db() {
@@ -40,7 +41,12 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
-    const { data, error } = await db().from("best_projects").select("project_id").order("position");
+    const { data, error } = await db()
+      .from("best_projects")
+      .select("project_id")
+      .order("position", { ascending: true })
+      // Supabase membatasi 1000 baris per query; naikkan agar daftar panjang tidak terpotong
+      .range(0, 9999);
     if (error) throw error;
     const ids = (data ?? []).map((r) => String((r as { project_id: unknown }).project_id));
     return NextResponse.json({ data: { ids } }, { headers: { "Cache-Control": "no-store" } });
@@ -66,26 +72,23 @@ export async function POST(req: Request) {
     return back(req, { error: "best_invalid" });
   }
 
-  if (ids.length > MAX_TOTAL || new Set(ids).size !== ids.length) {
+  // id ganda ditolak; selain itu jumlahnya bebas
+  if (new Set(ids).size !== ids.length) {
     return back(req, { error: "best_invalid" });
   }
 
   try {
     const supabase = db();
 
-    // semua id harus proyek yang ada; kategori dibaca dari database, bukan dari form
-    if (ids.length > 0) {
-      const { data, error } = await supabase.from("projects").select("id, category").in("id", ids);
+    // semua id harus proyek yang ada (dicek per potongan supaya aman untuk daftar panjang)
+    let found = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const part = ids.slice(i, i + CHUNK);
+      const { data, error } = await supabase.from("projects").select("id").in("id", part);
       if (error) throw error;
-      const rows = (data ?? []) as { id: string; category: string }[];
-      if (rows.length !== ids.length) return back(req, { error: "best_invalid" });
-
-      const perTab = new Map<string, number>();
-      for (const r of rows) perTab.set(r.category, (perTab.get(r.category) ?? 0) + 1);
-      for (const n of perTab.values()) {
-        if (n > MAX_PER_TAB) return back(req, { error: "best_max" });
-      }
+      found += (data ?? []).length;
     }
+    if (found !== ids.length) return back(req, { error: "best_invalid" });
 
     const { error } = await supabase.rpc("replace_best_projects", { p_ids: ids });
     if (error) throw error;

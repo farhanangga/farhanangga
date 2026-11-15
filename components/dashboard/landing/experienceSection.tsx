@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { ExperienceEditor, type ExperienceData } from "@/components/dashboard/experienceEditor";
+import { ExperienceEditor, type ExperienceData } from "@/components/dashboard/editor/experienceEditor";
 // Data dibaca lewat handler GET; penyimpanan oleh ExperienceEditor (fetch JSON ke route yang sama).
 import { GET as getExperienceRoute } from "@/app/api/landingPage/experience/edit/route";
 import { ErrorAlert, SectionShell } from "./shared";

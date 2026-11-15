@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { ToolsEditor, type ToolsEditData } from "@/components/dashboard/toolsEditor";
+import { ToolsEditor, type ToolsEditData } from "@/components/dashboard/editor/toolsEditor";
 // Tabel: tool_groups dan tools. Dibaca lewat GET; disimpan oleh ToolsEditor (POST JSON ke route yang sama).
 import { GET as getToolsRoute } from "@/app/api/landingPage/tools/edit/route";
 import { ErrorAlert, SectionShell } from "./shared";

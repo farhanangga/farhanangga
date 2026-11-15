@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { EditAbout, EditAboutSkeleton } from "@/components/dashboard/editAbout";
+import { EditAbout, EditAboutSkeleton } from "@/components/dashboard/editor/editAbout";
 import type { Params } from "@/components/dashboard/landing/shared";
 
-export const metadata = { title: "Tentang saya · Landing page" };
+export const metadata = { title: "Tentang saya | Landing page" };
 
 export default function AboutPage({ searchParams }: { searchParams: Promise<Params> }) {
   return (

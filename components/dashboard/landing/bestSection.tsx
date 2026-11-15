@@ -4,18 +4,20 @@ import { CircleCheck, Info } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { Card } from "@/components/dashboard/shared";
 import { SubmitButton } from "@/components/dashboard/imageDropzone";
-import { BestProjectPicker, type PickTab } from "@/components/dashboard/bestProjectPicker";
+import { BestProjectPicker, type PickTab } from "@/components/dashboard/editor/bestProjectPicker";
 // Satu-satunya pintu data: handler GET di route ini. Penyimpanan best project lewat action form (POST).
 import { GET as getBestRoute } from "@/app/api/landingPage/best/edit/route";
 import { GET as getProjectsRoute } from "@/app/api/projects/route";
 import { CardHead, ErrorAlert, SectionShell, muted, type Params } from "./shared";
 
 const API_BEST = "/api/landingPage/best/edit";
-const MAX_BEST = 6;
+
+/** Maksimal best project per bidang/tab (harus sama dengan MAX_PER_TAB di route.ts dan halaman publik). */
+const MAX_BEST = 10;
 
 const errorMsg: Record<string, string> = {
   best_invalid: "Pilihan best project tidak valid. Ada proyek yang tidak ditemukan atau terduplikasi.",
-  best_max: "Maksimal 6 best project per bidang. Kurangi pilihan di bidang yang melebihi batas.",
+  best_max: `Maksimal ${MAX_BEST} best project per bidang. Kurangi pilihan di bidang yang melebihi batas.`,
   best_save:
     "Best project gagal disimpan. Pastikan fungsi replace_best_projects sudah dibuat (jalankan best_projects_admin.sql).",
   default: "Perubahan gagal disimpan. Periksa isian form lalu coba lagi.",
