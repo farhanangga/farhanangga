@@ -7,10 +7,10 @@ import { contacts, navLinks, profile } from "@/lib/data";
 import { mono } from "@/components/fonts";
 import { EASE, Icon } from "@/components/ui";
 
-/* ───────────── Pengaturan (sesuaikan) ───────────── */
+/* ───────────── Settings (adjust as needed) ───────────── */
 
-// Nomor WhatsApp: pakai profile.phone jika ada di data, jika tidak pakai nilai di bawah.
-// Format wa.me: kode negara tanpa "+" dan tanpa 0 di depan (contoh 62812xxxxxxx).
+// WhatsApp number: uses profile.phone if it exists in the data, otherwise the value below.
+// wa.me format: country code without "+" and without a leading 0 (example: 62812xxxxxxx).
 const WA_DIGITS = (
   (profile as { phone?: string }).phone ?? "6289515837340"
 ).replace(/\D/g, "");
@@ -19,10 +19,10 @@ const WA_DISPLAY = `+${WA_DIGITS.slice(0, 2)} ${WA_DIGITS.slice(2, 5)}-${WA_DIGI
   9
 )}-${WA_DIGITS.slice(9)}`;
 const WA_HREF = `https://wa.me/${WA_DIGITS}?text=${encodeURIComponent(
-  "Halo Angga, saya ingin berdiskusi tentang proyek."
+  "Hello Angga, I'd like to discuss a project."
 )}`;
 
-/* ───────────── Komponen kecil ───────────── */
+/* ───────────── Small components ───────────── */
 
 const linkFocus =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6C63FF]";
@@ -45,11 +45,11 @@ const fade = (delay = 0) => ({
 /* ───────────── Footer ───────────── */
 
 export function Footer() {
-  const words = "Mari bekerja sama".split(" ");
+  const words = "Let's work together".split(" ");
 
   return (
     <footer className="relative overflow-hidden border-t border-white/10">
-      {/* cahaya latar */}
+      {/* background glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-40 left-1/2 h-[320px] w-[520px] -translate-x-1/2 rounded-full bg-[#6C63FF]/15 blur-[120px]"
@@ -57,11 +57,11 @@ export function Footer() {
 
       <div className="relative mx-auto max-w-[1200px] px-5 pb-8 pt-16 sm:px-10 sm:pt-20">
         <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr] lg:gap-10">
-          {/* ── Kolom 1: ajakan ── */}
+          {/* ── Column 1: call to action ── */}
           <div>
             <h2
               className={`${mono.className} mt-5 text-4xl font-bold leading-[1.1] sm:text-5xl lg:text-6xl`}
-              aria-label="Mari bekerja sama"
+              aria-label="Let's work together"
             >
               {words.map((w, wi) => (
                 <span key={wi} aria-hidden className="mr-[0.25em] inline-block whitespace-nowrap">
@@ -90,8 +90,8 @@ export function Footer() {
               {...fade(0.1)}
               className="mt-5 max-w-md text-sm leading-relaxed text-white/60 sm:text-base"
             >
-              Punya ide website, aplikasi, atau desain antarmuka? Ceritakan kebutuhan Anda, saya
-              siap membantu mewujudkannya.
+              Have an idea for a website, an app, or an interface design? Tell me what you need, and
+              I'll help bring it to life.
             </motion.p>
 
             <motion.div {...fade(0.2)} className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -113,16 +113,16 @@ export function Footer() {
                 className={`inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/90 transition hover:border-[#FFC857]/60 hover:text-[#FFC857] ${linkFocus}`}
               >
                 <Mail size={18} />
-                Kirim email
+                Send an email
               </a>
             </motion.div>
           </div>
 
-          {/* ── Kolom 2 & 3 ── */}
+          {/* ── Columns 2 & 3 ── */}
           <div className="grid gap-10 sm:grid-cols-2 lg:contents">
-            {/* navigasi (dari navLinks di lib/data.ts) */}
-            <motion.nav {...fade(0.1)} aria-label="Navigasi footer">
-              <ColTitle>Navigasi</ColTitle>
+            {/* navigation (from navLinks in lib/data.ts) */}
+            <motion.nav {...fade(0.1)} aria-label="Footer navigation">
+              <ColTitle>Navigation</ColTitle>
               <ul className="space-y-1">
                 {navLinks.map((n) => (
                   <li key={n.href}>
@@ -135,7 +135,7 @@ export function Footer() {
                         <span
                           className={`${mono.className} rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/40`}
                         >
-                          Segera
+                          Soon
                         </span>
                       </span>
                     ) : (
@@ -157,9 +157,9 @@ export function Footer() {
               </ul>
             </motion.nav>
 
-            {/* kontak */}
+            {/* contact */}
             <motion.div {...fade(0.2)}>
-              <ColTitle>Kontak</ColTitle>
+              <ColTitle>Contact</ColTitle>
               <ul className="space-y-4 text-sm">
                 <li>
                   <a
@@ -196,7 +196,7 @@ export function Footer() {
                     <MapPin size={16} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-xs text-white/40">Lokasi</span>
+                    <span className="block text-xs text-white/40">Location</span>
                     <span className="block">{profile.location}</span>
                   </span>
                 </li>
@@ -205,10 +205,10 @@ export function Footer() {
           </div>
         </div>
 
-        {/* ── Bar bawah ── */}
+        {/* ── Bottom bar ── */}
         <div className="mt-14 flex flex-col items-center gap-5 border-t border-white/10 pt-8 text-center sm:flex-row sm:justify-between sm:text-left">
           <p className="order-2 text-xs text-white/50 sm:order-1 sm:text-sm">
-            © 2026 Farhan Angga Riyanto. Semua hak dilindungi.
+            © 2026 Farhan Angga Riyanto. All rights reserved.
           </p>
 
           <div className="order-1 flex gap-2 sm:order-2">
@@ -232,7 +232,7 @@ export function Footer() {
 
       <motion.button
         type="button"
-        aria-label="Kembali ke atas"
+        aria-label="Back to top"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         whileHover={{ y: -4, scale: 1.08 }}
         whileTap={{ scale: 0.92 }}

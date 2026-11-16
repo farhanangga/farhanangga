@@ -28,7 +28,7 @@ function Burger({ open }: { open: boolean }) {
 }
 
 /* ------------------------------- Variants ------------------------------- */
-/* Semua pakai state "open" / "closed" yang diwariskan dari panel. */
+/* All of them use the "open" / "closed" state inherited from the panel. */
 const curtainV: Variants = {
   closed: {
     y: "-100%",
@@ -66,8 +66,8 @@ function NavbarInner() {
   const role = search.get("role");
 
   /**
-   * Link aktif: path harus sama. Kalau href punya ?role=..., role di URL juga
-   * harus sama. Kalau href tanpa query, URL tidak boleh punya ?role.
+   * Active link: the path must match. If the href has ?role=..., the role in the
+   * URL must match too. If the href has no query, the URL must not have ?role.
    */
   const isActive = (href: string) => {
     const [path, qs] = href.split("?");
@@ -76,12 +76,12 @@ function NavbarInner() {
     return want ? want === role : !role;
   };
 
-  // tutup menu saat pindah halaman / ganti filter
+  // close the menu when navigating to another page / changing the filter
   useEffect(() => {
     setOpen(false);
   }, [pathname, role]);
 
-  // kunci scroll, tutup dengan Escape, tutup otomatis saat layar melebar ke desktop
+  // lock scroll, close with Escape, close automatically when the screen widens to desktop
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -110,15 +110,15 @@ function NavbarInner() {
         className="fixed inset-x-0 top-0 z-[9999] px-4 pt-4 sm:px-8 sm:pt-6"
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 max-md:rounded-full max-md:border max-md:border-white/10 max-md:bg-black/50 max-md:py-1.5 max-md:pl-6 max-md:pr-1.5 max-md:backdrop-blur-md">
-          {/* logo: file ada di public/assets/icon.png */}
+          {/* logo: the file is at public/assets/icon.png */}
           <Link
             href="/"
-            aria-label="Beranda"
+            aria-label="Home"
             className="block shrink-0 transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF]"
           >
             <Image
               src="/assets/icon.png"
-              alt="Logo FA"
+              alt="FA logo"
               width={44}
               height={44}
               priority
@@ -128,7 +128,7 @@ function NavbarInner() {
 
           {/* ---------------- Desktop nav ---------------- */}
           <nav
-            aria-label="Navigasi utama"
+            aria-label="Main navigation"
             onMouseLeave={() => setHovered(null)}
             className="hidden items-center rounded-full border border-white/10 bg-black/50 p-1.5 backdrop-blur-md md:flex"
           >
@@ -140,9 +140,9 @@ function NavbarInner() {
                     href={l.locked ? "#" : l.href}
                     aria-disabled={l.locked}
                     aria-current={!l.locked && isActive(l.href) ? "page" : undefined}
-                    title={l.locked ? "Halaman ini belum tersedia" : undefined}
+                    title={l.locked ? "This page is not available yet" : undefined}
                     onClick={(e) => {
-                      if (l.locked) e.preventDefault(); // jangan lompat ke atas halaman
+                      if (l.locked) e.preventDefault(); // don't jump to the top of the page
                     }}
                     onMouseEnter={() => setHovered(l.label)}
                     className={`relative flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6C63FF] ${
@@ -164,7 +164,7 @@ function NavbarInner() {
             })}
           </nav>
 
-          {/* ---------------- Kontak (desktop saja) ---------------- */}
+          {/* ---------------- Contacts (desktop only) ---------------- */}
           <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-black/50 p-1.5 backdrop-blur-md md:flex">
             {contacts.map((c, i) => (
               <motion.a
@@ -182,10 +182,10 @@ function NavbarInner() {
             ))}
           </div>
 
-          {/* ---------------- Hamburger (mobile saja) ---------------- */}
+          {/* ---------------- Hamburger (mobile only) ---------------- */}
           <motion.button
             type="button"
-            aria-label={open ? "Tutup menu" : "Buka menu"}
+            aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-menu"
             onClick={() => setOpen((o) => !o)}
@@ -199,9 +199,9 @@ function NavbarInner() {
         </div>
       </motion.header>
 
-      {/* ---------------- Menu mobile ----------------
-          Selalu ter-mount (tanpa AnimatePresence). Satu state `open` menggerakkan
-          semuanya, jadi buka-tutup cepat tetap konsisten. */}
+      {/* ---------------- Mobile menu ----------------
+          Always mounted (no AnimatePresence). A single `open` state drives
+          everything, so rapid open/close stays consistent. */}
       <motion.div
         aria-hidden
         variants={curtainV}
@@ -214,14 +214,14 @@ function NavbarInner() {
         id="mobile-menu"
         role="dialog"
         aria-modal="true"
-        aria-label="Menu navigasi"
+        aria-label="Navigation menu"
         aria-hidden={!open}
         variants={panelV}
         initial="closed"
         animate={open ? "open" : "closed"}
         className="invisible fixed inset-x-0 top-0 z-[9998] flex h-[calc(100dvh-0.75rem)] flex-col overflow-y-auto overflow-x-hidden rounded-b-[2rem] bg-[#0B0B16] px-6 pb-8 pt-28 md:hidden"
       >
-        {/* dekorasi glow */}
+        {/* glow decorations */}
         <div aria-hidden className="pointer-events-none absolute -right-24 top-10 h-72 w-72 rounded-full bg-[#6C63FF]/30 blur-[90px]" />
         <div aria-hidden className="pointer-events-none absolute -left-24 bottom-10 h-64 w-64 rounded-full bg-[#FFC857]/10 blur-[90px]" />
 
@@ -262,7 +262,7 @@ function NavbarInner() {
                   {l.locked ? (
                     <span className={`${mono.className} flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-white/40`}>
                       <Lock className="h-3 w-3" aria-hidden />
-                      Segera
+                      Soon
                     </span>
                   ) : active ? (
                     <span className="h-2.5 w-2.5 rounded-full bg-[#6C63FF] shadow-[0_0_14px_3px_#6C63FF]" />
@@ -286,10 +286,10 @@ function NavbarInner() {
           })}
         </motion.ul>
 
-        {/* kontak */}
+        {/* contacts */}
         <motion.div variants={group} className="relative mt-auto pt-10">
           <motion.p variants={item} className={`${mono.className} mb-4 text-xs uppercase tracking-[0.25em] text-white/40`}>
-            Temukan saya di
+            Find me on
           </motion.p>
           <div className="flex flex-wrap gap-3">
             {contacts.map((c) => (
@@ -313,7 +313,7 @@ function NavbarInner() {
   );
 }
 
-/** useSearchParams wajib dibungkus Suspense. */
+/** useSearchParams must be wrapped in Suspense. */
 export function Navbar() {
   return (
     <Suspense fallback={null}>
