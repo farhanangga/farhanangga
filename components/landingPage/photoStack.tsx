@@ -295,7 +295,7 @@ export function PhotoStack({
           / {pad(n)} · {cur?.title}
         </p>
         <p className="text-center text-xs text-white/35">
-          Geser kartu atau gunakan panah. Klik kartu tengah untuk melihat detail.
+          Swipe the cards or use the arrows. Click the center card to view details.
         </p>
       </div>
     </div>

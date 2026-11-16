@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, type Variants } from "framer-motion";
 import { ArrowUpRight, Images, Search, X } from "lucide-react";
@@ -142,19 +142,23 @@ const imgV: Variants = {
   hover: { scale: 1.07, transition: { duration: 0.8, ease: EASE } },
 };
 
-function ProjectCard({
-  entry,
-  index,
-  showRole,
-  terms,
-  onOpen,
-}: {
+type ProjectCardProps = {
   entry: Entry;
   index: number;
   showRole: boolean;
   terms: string[];
   onOpen: (rect: DOMRect) => void;
-}) {
+};
+
+/**
+ * forwardRef is REQUIRED: AnimatePresence mode="popLayout" needs a ref to the
+ * root DOM element of every direct child so it can measure it and pop it out
+ * of the layout when it exits. Without it, exiting cards get stuck in the grid.
+ */
+const ProjectCard = forwardRef<HTMLLIElement, ProjectCardProps>(function ProjectCard(
+  { entry, index, showRole, terms, onOpen },
+  ref
+) {
   const { p, tab } = entry;
   const th = themeForTab(tab);
   const isPhoto = kindOf(tab) === "photo";
@@ -175,6 +179,7 @@ function ProjectCard({
 
   return (
     <motion.li
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 32, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -278,7 +283,7 @@ function ProjectCard({
       </motion.div>
     </motion.li>
   );
-}
+});
 
 /* ───────────── Page ───────────── */
 
@@ -377,6 +382,13 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
       elRect.left - listRect.left + list.scrollLeft - (list.clientWidth - elRect.width) / 2;
 
     list.scrollTo({ left, behavior: "smooth" });
+  }, [activeId]);
+
+  // close the modal whenever the field filter changes (including changes coming
+  // from the URL, e.g. a button on another page), so sel.index never points at
+  // a card from the previous list
+  useEffect(() => {
+    setSel(null);
   }, [activeId]);
 
   // shortcut: press "/" to jump straight into the search field

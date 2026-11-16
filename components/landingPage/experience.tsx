@@ -555,11 +555,11 @@ export function Experience() {
         />
 
         <div className="relative mx-auto max-w-[1200px] px-4 pb-20 sm:px-10 sm:pb-28">
-          <Heading sub="Perjalanan kerja, organisasi, dan penghargaan">Pengalaman kerja</Heading>
+          <Heading sub="Work journey, organizations, and awards">Work Experience</Heading>
 
           {status !== "ok" && (
             <p className="mt-8 text-center text-sm text-white/50 sm:mt-10">
-              {status === "loading" ? "Memuat data..." : "Gagal memuat data pengalaman."}
+              {status === "loading" ? "Loading data..." : "Failed to load experience data."}
             </p>
           )}
           {experiences.length > 0 && (
@@ -580,7 +580,7 @@ export function Experience() {
               {orgRows.length > 0 && (
                 <motion.div variants={rise} className="min-w-0">
                   <InfoCard
-                    title="Organisasi"
+                    title="Organizations"
                     Icon={Users}
                     hex="#F25C5C"
                     rgb="242,92,92"
@@ -591,7 +591,7 @@ export function Experience() {
               {awardRows.length > 0 && (
                 <motion.div variants={rise} className="min-w-0">
                   <InfoCard
-                    title="Sertifikat dan penghargaan"
+                    title="Certificates & Awards"
                     Icon={Award}
                     hex="#FFC857"
                     rgb="255,200,87"

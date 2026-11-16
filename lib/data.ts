@@ -470,7 +470,7 @@ const parseYM = (s: string) => {
 /** "2025-09","2025-12" -> "Sep – Des 2025" | "2021-12","2022-07" -> "Des 2021 – Jul 2022" | tanpa end -> "... – Sekarang" */
 export function formatPeriod(start: string, end?: string) {
   const a = parseYM(start);
-  if (!end) return `${MONTHS[a.m]} ${a.y} – Sekarang`;
+  if (!end) return `${MONTHS[a.m]} ${a.y} – Now`;
   const b = parseYM(end);
   return a.y === b.y
     ? `${MONTHS[a.m]} – ${MONTHS[b.m]} ${b.y}`

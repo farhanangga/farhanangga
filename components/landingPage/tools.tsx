@@ -255,7 +255,7 @@ export function Tools() {
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 h-72 w-72 -translate-x-1/2 rounded-full bg-[#6C63FF]/20 blur-[110px] sm:h-96 sm:w-96" />
 
       <div className="relative mx-auto max-w-[1200px] px-5 sm:px-10">
-        <Heading>Tools yang saya kuasai</Heading>
+        <Heading>Tools I Master</Heading>
       </div>
 
       {/* Marquee: desktop 2 baris, mobile 4 baris (baris 3 & 4 hanya di mobile) */}

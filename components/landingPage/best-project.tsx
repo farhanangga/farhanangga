@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import {
   AnimatePresence,
   MotionConfig,
@@ -19,9 +20,9 @@ import { ProjectModal, Shot, pad, themeOf, type Theme } from "@/components/proje
 import { PhotoStack } from "./photoStack";
 import { isPhotoTab, tabKey } from "./photoCover";
 
-/* ───────────── Konfigurasi & data ───────────── */
+/* ───────────── Configuration & data ───────────── */
 
-/** Palet yang sama dengan daftar role (Software, UI/UX, Photography, Graphic). */
+/** Same palette as the role list (Software, UI/UX, Photography, Graphic). */
 const ROLE_COLORS = ["#6366F1", "#F25C5C", "#FFC857", "#34D399"] as const;
 
 const supabase = createClient(
@@ -30,7 +31,7 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-/** Semua tab + proyeknya dari api/projects (data = daftar tab, tiap tab punya array projects). */
+/** All tabs + their projects from api/projects (data = list of tabs, each tab has a projects array). */
 async function fetchTabs(): Promise<ProjectTab[]> {
   const res = await fetch("/api/projects", { cache: "no-store" });
   if (!res.ok) throw new Error(`api/projects status ${res.status}`);
@@ -38,7 +39,7 @@ async function fetchTabs(): Promise<ProjectTab[]> {
   return Array.isArray(json.data) ? json.data : [];
 }
 
-/** Tab dari api/projects, pilihan best project dari best_projects. */
+/** Tabs from api/projects, best-project selection from best_projects. */
 async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
   try {
     const [tabs, bestRes] = await Promise.all([
@@ -47,15 +48,15 @@ async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
     ]);
 
     if (bestRes.error) {
-      console.error("[BestProject] gagal membaca best_projects:", bestRes.error.message);
+      console.error("[BestProject] failed to read best_projects:", bestRes.error.message);
       return [];
     }
 
-    // urutan tampil mengikuti best_projects.position
+    // display order follows best_projects.position
     const rank = new Map<string, number>();
     (bestRes.data ?? []).forEach((b, i) => rank.set(String(b.project_id), i));
 
-    // semua tab tetap tampil (juga yang belum punya best project); jumlah proyek tidak dibatasi
+    // every tab stays visible (even those without a best project); the number of projects is not capped
     return tabs.map((t) => ({
       ...t,
       projects: t.projects
@@ -63,12 +64,12 @@ async function fetchBestProjectTabs(): Promise<ProjectTab[]> {
         .sort((a, b) => (rank.get(String(a.id)) ?? 0) - (rank.get(String(b.id)) ?? 0)),
     }));
   } catch (err) {
-    console.error("[BestProject] tidak bisa membaca data", err);
+    console.error("[BestProject] unable to read data", err);
     return [];
   }
 }
 
-/* ───────────── Warna per bidang ───────────── */
+/* ───────────── Color per field ───────────── */
 
 const PALETTE = {
   software: { hex: "#6366F1", rgb: "99,102,241", ink: "#FFFFFF" },
@@ -77,7 +78,7 @@ const PALETTE = {
   graphic: { hex: "#34D399", rgb: "52,211,153", ink: "#000000" },
 } as const;
 
-/** Tentukan warna dari nama tab; ikon & field lain tetap dari themeOf. */
+/** Pick the color from the tab name; the icon & other fields still come from themeOf. */
 function themeForTab(t: ProjectTab): Theme {
   const base = themeOf(t.id);
   const key = tabKey(t);
@@ -95,11 +96,11 @@ function themeForTab(t: ProjectTab): Theme {
   return color ? { ...base, ...color } : base;
 }
 
-/* ───────────── Layout grid ───────────── */
+/* ───────────── Grid layout ───────────── */
 
-// Pola lebar card di layar besar (3 kolom) untuk jumlah proyek berapa pun.
-// Kartu disusun berpasangan per baris, selang-seling 2+1 lalu 1+2 (total selalu 3 kolom).
-// Jika jumlahnya ganjil, kartu terakhir mengisi satu baris penuh. Tidak ada lubang di grid.
+// Card width pattern on large screens (3 columns) for any number of projects.
+// Cards are arranged in pairs per row, alternating 2+1 then 1+2 (always 3 columns total).
+// If the count is odd, the last card fills a full row. No holes in the grid.
 function lgSpan(i: number, n: number): string {
   if (i === n - 1 && n % 2 === 1) return "lg:col-span-3";
   const firstInPair = i % 2 === 0;
@@ -109,12 +110,12 @@ function lgSpan(i: number, n: number): string {
 
 function layoutFor(i: number, n: number): { spanClass: string; big: boolean } {
   const lg = lgSpan(i, n);
-  // layar sedang (2 kolom): kartu terakhir yang sendirian mengisi satu baris penuh
+  // medium screens (2 columns): a lone last card fills a full row
   const sm = n % 2 === 1 && i === n - 1 ? "sm:col-span-2" : "";
   return { spanClass: `${sm} ${lg}`.trim(), big: lg !== "" };
 }
 
-/* ───────────── Animasi (tidak bergantung pada data) ───────────── */
+/* ───────────── Animations (independent of data) ───────────── */
 
 const cardV = {
   hidden: { opacity: 0, y: 36, filter: "blur(10px)" },
@@ -143,17 +144,17 @@ const titleV = {
 
 /* ───────────── Skeleton ───────────── */
 
-/** Placeholder supaya layout tidak melompat saat data datang */
+/** Placeholder so the layout doesn't jump when data arrives */
 function BestProjectSkeleton() {
   return (
     <section className="mx-auto max-w-[1200px] px-5 pb-24 sm:px-10 sm:pb-28">
-      {/* judul */}
+      {/* title */}
       <div
         className="h-10 w-64 animate-pulse rounded-lg"
         style={{ backgroundColor: `${ROLE_COLORS[0]}33` }}
       />
 
-      {/* tab: satu pil per warna role */}
+      {/* tabs: one pill per role color */}
       <div className="mt-8 flex w-full max-w-md gap-3">
         {ROLE_COLORS.map((color) => (
           <div
@@ -164,7 +165,7 @@ function BestProjectSkeleton() {
         ))}
       </div>
 
-      {/* kartu proyek */}
+      {/* project cards */}
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => {
           const color = ROLE_COLORS[i % ROLE_COLORS.length];
@@ -183,7 +184,7 @@ function BestProjectSkeleton() {
   );
 }
 
-/* ───────────── Card (grid biasa) ───────────── */
+/* ───────────── Card (regular grid) ───────────── */
 
 function ProjectCard({
   p,
@@ -202,7 +203,7 @@ function ProjectCard({
 }) {
   const extraTools = p.tools.length - 3;
 
-  // posisi kursor 0..1, dipakai untuk tilt, parallax, dan cahaya
+  // cursor position 0..1, used for tilt, parallax, and glow
   const mx = useMotionValue(0.5);
   const my = useMotionValue(0.5);
   const spring = { stiffness: 170, damping: 18 };
@@ -215,7 +216,7 @@ function ProjectCard({
   const borderGlow = useMotionTemplate`radial-gradient(240px circle at ${gx} ${gy}, rgba(${theme.rgb},1), transparent 70%)`;
   const innerGlow = useMotionTemplate`radial-gradient(380px circle at ${gx} ${gy}, rgba(${theme.rgb},0.22), transparent 65%)`;
 
-  // satu-satunya varian yang bergantung pada tema
+  // the only variant that depends on the theme
   const arrowV = {
     rest: { rotate: 0, backgroundColor: "rgba(255,255,255,0.08)", color: "#FFFFFF" },
     hover: {
@@ -255,7 +256,7 @@ function ProjectCard({
           className="block h-full w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-white/70"
         >
           <span className="relative block h-full rounded-2xl p-px">
-            {/* border: putih tipis + sorotan warna mengikuti kursor */}
+            {/* border: thin white + color highlight that follows the cursor */}
             <span aria-hidden className="absolute inset-0 rounded-2xl bg-white/10" />
             <motion.span
               aria-hidden
@@ -264,17 +265,17 @@ function ProjectCard({
             />
 
             <span className="relative block h-full overflow-hidden rounded-[15px] bg-[#0C0C20]">
-              {/* gambar dengan parallax */}
+              {/* image with parallax */}
               <motion.span variants={imgV} style={{ x: px, y: py }} className="absolute -inset-4 block">
                 <Shot
                   src={p.images[0] ?? ""}
-                  alt={`Sampul proyek ${p.title}`}
+                  alt={`Cover of ${p.title}`}
                   sizes="(min-width:1024px) 760px, (min-width:640px) 50vw, 100vw"
                   theme={theme}
                 />
               </motion.span>
 
-              {/* gradient (lebih pekat di bawah agar teks selalu terbaca) + cahaya + kilau */}
+              {/* gradient (denser at the bottom so text is always readable) + glow + shine */}
               <span className="absolute inset-0 bg-gradient-to-t from-[#0C0C20] from-15% via-[#0C0C20]/85 via-45% to-[#0C0C20]/0" />
               <motion.span
                 aria-hidden
@@ -287,7 +288,7 @@ function ProjectCard({
                 className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent"
               />
 
-              {/* badge atas */}
+              {/* top badges */}
               <span className="absolute inset-x-4 top-4 z-10 flex items-center justify-between">
                 <span
                   className={`${mono.className} inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur`}
@@ -300,7 +301,7 @@ function ProjectCard({
                 </span>
               </span>
 
-              {/* isi bawah */}
+              {/* bottom content */}
               <span className="absolute inset-x-0 bottom-0 z-10 block min-w-0 overflow-hidden p-5">
                 <span className="flex items-center gap-2">
                   <span className="h-px w-6 shrink-0" style={{ background: theme.hex }} />
@@ -313,9 +314,9 @@ function ProjectCard({
                 </span>
 
                 {/*
-                  judul: maksimal 2 baris.
-                  Catatan: JANGAN menambahkan class "block" bersama line-clamp, karena "block"
-                  menimpa display:-webkit-box milik line-clamp sehingga pemotongan teks tidak jalan.
+                  title: max 2 lines.
+                  Note: do NOT add the "block" class together with line-clamp, because "block"
+                  overrides line-clamp's display:-webkit-box so the text truncation stops working.
                 */}
                 <motion.span
                   variants={titleV}
@@ -326,7 +327,7 @@ function ProjectCard({
                   {p.title}
                 </motion.span>
 
-                {/* deskripsi: maksimal 2 baris, sisanya dipotong dengan "…"; teks lengkap ada di modal */}
+                {/* description: max 2 lines, the rest is cut with "…"; the full text is in the modal */}
                 <span className="mt-2 line-clamp-2 max-w-[56ch] break-words text-sm leading-relaxed text-white/75">
                   {p.desc}
                 </span>
@@ -363,7 +364,7 @@ function ProjectCard({
   );
 }
 
-/* ───────────── Tampilan section ───────────── */
+/* ───────────── Section view ───────────── */
 
 function BestProjectView({
   tabs,
@@ -372,7 +373,7 @@ function BestProjectView({
   tabs: ProjectTab[];
   covers?: Record<string, ReactNode>;
 }) {
-  // buka tab pertama yang sudah punya best project
+  // open the first tab that already has a best project
   const [tabId, setTabId] = useState(() => (tabs.find((t) => t.projects.length > 0) ?? tabs[0]).id);
   const [sel, setSel] = useState<{ index: number; rect: DOMRect | null } | null>(null);
 
@@ -382,7 +383,7 @@ function BestProjectView({
   const totalProjects = tabs.reduce((sum, t) => sum + t.projects.length, 0);
   const n = tab.projects.length;
 
-  // modal bersama menerima daftar { p, tab }
+  // the shared modal receives a list of { p, tab }
   const entries = useMemo(() => tab.projects.map((p) => ({ p, tab })), [tab]);
 
   return (
@@ -399,7 +400,7 @@ function BestProjectView({
             WebkitMaskImage: "radial-gradient(ellipse 75% 55% at 50% 30%, black, transparent)",
           }}
         />
-        {/* blob cahaya mengikuti warna tab */}
+        {/* glow blobs that follow the tab color */}
         <motion.div
           aria-hidden
           className="pointer-events-none absolute -left-32 top-20 h-[420px] w-[420px] rounded-full opacity-25 blur-[130px]"
@@ -422,13 +423,13 @@ function BestProjectView({
         />
 
         <div className="relative mx-auto max-w-[1200px] px-5 pb-24 sm:px-10 sm:pb-28">
-          <Heading sub="Pilih bidang, lalu klik proyek untuk melihat detailnya">Proyek terbaik</Heading>
+          <Heading sub="Pick a field, then click a project to see its details">Best projects</Heading>
 
-          {/* tab role: semua bidang dari project_tabs */}
+          {/* role tabs: every field from project_tabs */}
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div
               role="tablist"
-              aria-label="Bidang proyek"
+              aria-label="Project fields"
               className="grid gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 sm:inline-grid"
               style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
             >
@@ -471,23 +472,23 @@ function BestProjectView({
               <span className={mono.className} style={{ color: theme.hex }}>
                 {pad(n)}
               </span>{" "}
-              proyek terbaik di bidang ini · {totalProjects} total
+              best {n === 1 ? "project" : "projects"} in this field · {totalProjects} total
             </p>
           </div>
 
-          {/* konten: pesan kosong, tumpukan foto (photography), atau grid card */}
+          {/* content: empty message, photo stack (photography), or card grid */}
           <AnimatePresence mode="wait">
             {n === 0 ? (
               <motion.div
-                key={`${tab.id}-kosong`}
+                key={`${tab.id}-empty`}
                 role="tabpanel"
                 className="mt-8 grid place-items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-20 text-center"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
               >
-                <p className="text-white/70">Belum ada proyek terbaik di bidang {tab.label}.</p>
-                <p className="mt-1 text-sm text-white/40">Segera hadir.</p>
+                <p className="text-white/70">No best projects in {tab.label} yet.</p>
+                <p className="mt-1 text-sm text-white/40">Coming soon.</p>
               </motion.div>
             ) : photo ? (
               <motion.div
@@ -531,6 +532,31 @@ function BestProjectView({
               </motion.ul>
             )}
           </AnimatePresence>
+
+          {/* link to the projects page, filtered to the active role */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`cta-${tab.id}`}
+              className="mt-10 flex justify-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } }}
+              exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
+            >
+              <Link
+                href={`/projects?role=${encodeURIComponent(tab.id)}`}
+                className="group inline-flex items-center gap-3 rounded-full px-6 py-3.5 text-sm font-semibold outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-white/70 active:scale-[0.98]"
+                style={{ background: theme.hex, color: theme.ink }}
+              >
+                View all {tab.label} projects
+                <span
+                  className="grid h-7 w-7 place-items-center rounded-full transition-transform duration-300 group-hover:translate-x-1"
+                  style={{ background: `rgba(${theme.ink === "#000000" ? "0,0,0" : "255,255,255"},0.16)` }}
+                >
+                  <ArrowRight size={15} />
+                </span>
+              </Link>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* detail */}
@@ -550,9 +576,9 @@ function BestProjectView({
   );
 }
 
-/* ───────────── Export utama ───────────── */
+/* ───────────── Main export ───────────── */
 
-/** Pakai langsung di page: <BestProject /> (loading & skeleton sudah ditangani di dalam) */
+/** Use directly on a page: <BestProject /> (loading & skeleton are handled inside) */
 export function BestProject({ covers }: { covers?: Record<string, ReactNode> }) {
   const [tabs, setTabs] = useState<ProjectTab[] | null>(null);
 
@@ -567,7 +593,7 @@ export function BestProject({ covers }: { covers?: Record<string, ReactNode> }) 
   }, []);
 
   if (tabs === null) return <BestProjectSkeleton />;
-  // belum ada satu pun best project → bagian ini tidak ditampilkan
+  // no best project at all → this section is not shown
   if (tabs.length === 0 || tabs.every((t) => t.projects.length === 0)) return null;
   return <BestProjectView tabs={tabs} covers={covers} />;
 }

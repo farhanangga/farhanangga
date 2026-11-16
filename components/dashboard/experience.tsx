@@ -45,9 +45,9 @@ const TIPE_OPTIONS = [
 ];
 
 const SAVED_LABEL: Record<string, string> = {
-  experience: "Pengalaman kerja",
-  organization: "Organisasi",
-  award: "Sertifikat dan penghargaan",
+  experience: "Work Experience",
+  organization: "Organizations",
+  award: "Certificates and Awards",
 };
 
 const errorMsg: Record<string, string> = {
