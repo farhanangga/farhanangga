@@ -18,6 +18,67 @@ function moveTo(list: Item[], id: string, targetId: string) {
   return next;
 }
 
+/** Thumbnail dengan retry otomatis.
+ *  - onError: mencoba ulang sampai 2 kali dengan jeda bertahap + cache-buster
+ *  - useEffect: menangkap gambar yang sudah gagal sebelum hydration (onError tidak terpanggil) */
+function Thumb({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const ref = useRef<HTMLImageElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  const retry = () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (attempt < 2) {
+      timer.current = setTimeout(() => setAttempt((a) => a + 1), 600 * (attempt + 1));
+    } else {
+      console.warn("[ExistingImages] gagal dimuat:", src);
+      setFailed(true);
+    }
+  };
+
+  useEffect(() => {
+    const img = ref.current;
+    if (img && img.complete && img.naturalWidth === 0) retry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // src kosong / gagal: tampilkan placeholder, jangan render <img>
+  if (!src || failed) {
+    return (
+      <div
+        title={src || "URL gambar kosong"}
+        className="grid h-full w-full place-items-center px-1 text-center text-[10px] text-[color:var(--fg-muted)]"
+      >
+        {src ? "Gagal dimuat" : "URL kosong"}
+      </div>
+    );
+  }
+
+  // cache-buster hanya saat retry, supaya respons gagal yang ter-cache dilewati
+  const url = attempt === 0 ? src : `${src}${src.includes("?") ? "&" : "?"}r=${attempt}`;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      ref={ref}
+      src={url}
+      alt={alt}
+      draggable={false}
+      decoding="async"
+      onError={retry}
+      className={className}
+    />
+  );
+}
+
 /** Gambar yang sudah tersimpan: bisa diseret untuk mengatur urutan dan ditandai untuk dihapus.
  *  Dikirim lewat hidden input: `order` (gambar yang dipertahankan, sesuai urutan di layar)
  *  dan `remove` (gambar yang akan dihapus). */
@@ -155,12 +216,10 @@ export function ExistingImages({ images }: { images: ExistingImage[] }) {
               canDrag ? "cursor-grab" : ""
             } ${dragId === it.id ? "opacity-40 !ring-2 !ring-[#5A64D8]" : ""}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Thumb
+              key={it.src}
               src={it.src}
               alt={`Gambar ${i + 1}`}
-              draggable={false}
-              loading="lazy"
               className={`h-full w-full object-cover transition ${it.removed ? "opacity-40 grayscale" : ""}`}
             />
 

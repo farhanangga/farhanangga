@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { getSession } from "@/lib/session";
 
 const BASE = "/dashboard/activities";
-const IMG_DIGITS = 8;
 const MAX_IMAGES = 10;
 const MAX_SIZE = 5 * 1024 * 1024;
 const BUCKET = process.env.SUPABASE_STORAGE_BUCKET_ACTIVITIES ?? "activityImages";
@@ -12,7 +12,7 @@ const BUCKET = process.env.SUPABASE_STORAGE_BUCKET_ACTIVITIES ?? "activityImages
 type Ctx = { params: Promise<{ id: string }> };
 
 // activity_images: nama_file = path file di bucket, lokasi_file = public URL, urutan = posisi
-type ImageRow = { id: string; nama_file: string | null; lokasi_file: string; urutan: number };
+type ImageRow = { id: string; nama_file: string | null; lokasi_file: string | null; urutan: number };
 type ActivityRow = {
   id: string;
   nama_kegiatan: string;
@@ -50,6 +50,33 @@ function parseYear(value: string): number | null | undefined {
   return year >= MIN_YEAR && year <= MAX_YEAR ? year : undefined;
 }
 
+/** Jobdesc tersimpan sebagai JSON array string, mis. ["a","b"]. Untuk form diubah jadi satu poin per baris. */
+function jobdescToText(raw: unknown) {
+  if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter(Boolean).join("\n");
+
+  const value = String(raw ?? "").trim();
+  if (value.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((x) => String(x).trim()).filter(Boolean).join("\n");
+      }
+    } catch {
+      /* bukan JSON valid: pakai apa adanya */
+    }
+  }
+  return value;
+}
+
+/** Kebalikannya: satu poin per baris → JSON array string (format yang sama dengan data lama). */
+function jobdescFromText(input: string) {
+  const lines = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length ? JSON.stringify(lines) : "";
+}
+
 function redirectTo(request: NextRequest, path: string) {
   return NextResponse.redirect(new URL(path, request.url), 303);
 }
@@ -67,6 +94,19 @@ function storagePathFromUrl(src: string) {
   if (i === -1) return null;
   const path = decodeURIComponent(src.slice(i + marker.length).split("?")[0]);
   return path || null;
+}
+
+/** Path file di bucket: dari nama_file, atau dari lokasi_file bila nama_file kosong. */
+function pathOf(img: ImageRow) {
+  return img.nama_file || (img.lokasi_file ? storagePathFromUrl(img.lokasi_file) : null);
+}
+
+/** URL publik gambar. Diutamakan dibentuk dari path di bucket (selalu sesuai bucket & project
+ *  saat ini), lalu jatuh ke lokasi_file. Kosong hanya jika kedua kolom kosong. */
+function imageUrl(db: Db, img: ImageRow) {
+  const path = pathOf(img);
+  if (path) return db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  return img.lokasi_file ?? "";
 }
 
 async function getActivity(db: Db, id: string) {
@@ -89,7 +129,7 @@ async function getImages(db: Db, id: string) {
   return (data ?? []) as ImageRow[];
 }
 
-/** Unggah berurutan (00000001.jpg, 00000002.png, …). Bentrok nama → nomor dinaikkan lalu dicoba lagi. */
+/** Unggah dengan nama unik (timestamp + uuid). URL tidak pernah dipakai ulang, jadi aman di-cache lama. */
 async function uploadImages(db: Db, files: File[]): Promise<Uploaded> {
   const urls: string[] = [];
   const paths: string[] = [];
@@ -99,48 +139,18 @@ async function uploadImages(db: Db, files: File[]): Promise<Uploaded> {
   const store = db.storage.from(BUCKET);
 
   try {
-    const { data, error } = await store.list("", {
-      limit: 1000,
-      sortBy: { column: "name", order: "desc" },
-    });
-    if (error) throw error;
-
-    let max = 0;
-    for (const file of data ?? []) {
-      const match = new RegExp(`^(\\d{${IMG_DIGITS}})\\.`).exec(file.name);
-      if (match) max = Math.max(max, Number(match[1]));
-    }
-
-    let number = max + 1;
-
     for (const file of files) {
-      let saved = false;
+      const path = `${Date.now()}-${randomUUID().slice(0, 8)}.${extOf(file)}`;
 
-      for (let attempt = 0; attempt < 5 && !saved; attempt++) {
-        const path = `${String(number).padStart(IMG_DIGITS, "0")}.${extOf(file)}`;
+      const { error } = await store.upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+        cacheControl: "31536000",
+      });
+      if (error) throw error;
 
-        const { error: uploadError } = await store.upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-        });
-
-        if (!uploadError) {
-          paths.push(path);
-          urls.push(store.getPublicUrl(path).data.publicUrl);
-          saved = true;
-        } else if (
-          /already exists|duplicate/i.test(uploadError.message) ||
-          (uploadError as { statusCode?: string }).statusCode === "409"
-        ) {
-          // Nomor sudah dipakai pihak lain, coba nomor berikutnya.
-        } else {
-          throw uploadError;
-        }
-
-        number++;
-      }
-
-      if (!saved) throw new Error("Nomor gambar bentrok terus-menerus.");
+      paths.push(path);
+      urls.push(store.getPublicUrl(path).data.publicUrl);
     }
 
     return { urls, paths };
@@ -168,9 +178,11 @@ export async function GET(_request: Request, { params }: Ctx) {
       return NextResponse.json({ error: "Activity tidak ditemukan." }, { status: 404 });
     }
 
-    const mapped = images.map((img) => ({ id: img.id, src: img.lokasi_file, position: img.urutan }));
+    const mapped = images.map((img) => ({ id: img.id, src: imageUrl(db, img), position: img.urutan }));
 
-    return NextResponse.json({ data: { activity: { ...activity, images: mapped } } });
+    return NextResponse.json({
+      data: { activity: { ...activity, jobdesc: jobdescToText(activity.jobdesc), images: mapped } },
+    });
   } catch (error) {
     console.error("[edit activity] GET error:", error);
     return NextResponse.json({ error: "Gagal memuat data activity." }, { status: 500 });
@@ -231,7 +243,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       nama_kegiatan: text(formData.get("nama_kegiatan")),
       tahun: parseYear(text(formData.get("tahun"))),
       role: text(formData.get("role")),
-      jobdesc: text(formData.get("jobdesc")),
+      jobdesc: jobdescFromText(text(formData.get("jobdesc"))),
       deskripsi: text(formData.get("deskripsi")),
     };
 
@@ -270,7 +282,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
     if (imagesChanged) {
       const finalFiles = [
-        ...kept.map((img) => ({ nama_file: img.nama_file, lokasi_file: img.lokasi_file })),
+        ...kept.map((img) => ({ nama_file: pathOf(img), lokasi_file: imageUrl(db, img) })),
         ...uploaded.urls.map((url, i) => ({ nama_file: uploaded.paths[i], lokasi_file: url })),
       ];
       const rows = finalFiles.map((file, index) => ({
@@ -308,9 +320,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     // 7. Hapus file gambar yang dibuang dari bucket (terbaik-usaha, tidak membatalkan simpan)
     if (removed.length > 0) {
       try {
-        const paths = removed
-          .map((img) => img.nama_file || storagePathFromUrl(img.lokasi_file))
-          .filter((p): p is string => !!p);
+        const paths = removed.map(pathOf).filter((p): p is string => !!p);
         if (paths.length) await db.storage.from(BUCKET).remove(paths);
       } catch (cleanupError) {
         console.error("[edit activity] Hapus file lama gagal:", cleanupError);

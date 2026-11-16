@@ -33,6 +33,7 @@ type EditActivity = {
   nama_kegiatan: string;
   tahun: number | null;
   role: string;
+  /** Sudah dikonversi route: satu poin per baris (bukan JSON). */
   jobdesc: string;
   deskripsi: string;
   images: ActivityImage[];
@@ -49,7 +50,7 @@ const errorMsg: Record<string, string> = {
   limit: `Total gambar (yang dipertahankan + yang baru) maksimal ${MAX_IMAGES} per activity.`,
   type: "Hanya file gambar yang diterima.",
   size: "Ukuran tiap gambar maksimal 5 MB.",
-  invalid: "Isian belum lengkap atau tidak valid. Periksa nama kegiatan, tahun (1900–2100), role, jobdesc, dan deskripsi.",
+  invalid: "Isian belum lengkap atau tidak valid. Periksa nama kegiatan, tahun (1900–2100), role, deskripsi, dan jobdesc.",
   upload: "Gambar gagal diunggah ke bucket. Periksa nama bucket dan service role key.",
   default: "Perubahan gagal disimpan. Periksa isian form lalu coba lagi.",
 };
@@ -65,6 +66,23 @@ const field =
   "w-full rounded-2xl bg-[color:var(--card-hi)] text-sm text-[color:var(--fg)] outline-none ring-1 ring-transparent transition placeholder:text-[color:var(--fg-muted)] focus:ring-2 focus:ring-[#5A64D8]";
 const inputCls = `${field} h-11 px-4`;
 const areaCls = `${field} resize-y px-4 py-3`;
+
+/** Jaga-jaga: kalau jobdesc masih berbentuk JSON array (["a","b"]), ubah jadi satu poin per baris.
+ *  Aman dipanggil berulang: teks yang sudah per baris dikembalikan apa adanya. */
+function toLines(raw: unknown) {
+  if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter(Boolean).join("\n");
+
+  const value = String(raw ?? "").trim();
+  if (value.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.map((x) => String(x).trim()).filter(Boolean).join("\n");
+    } catch {
+      /* bukan JSON valid */
+    }
+  }
+  return value;
+}
 
 /* ── data: hanya lewat handler GET di route ────────────── */
 
@@ -233,19 +251,7 @@ async function Content({
               </div>
             </Section>
 
-            <Section title="Cerita activity" desc="Tugas dan ringkasan kegiatan.">
-              <Field label="Jobdesc" htmlFor="jobdesc" required>
-                <textarea
-                  id="jobdesc"
-                  name="jobdesc"
-                  rows={4}
-                  required
-                  autoComplete="off"
-                  defaultValue={activity.jobdesc}
-                  className={areaCls}
-                  placeholder="Tugas dan tanggung jawab kamu di kegiatan ini"
-                />
-              </Field>
+            <Section title="Cerita activity" desc="Ringkasan kegiatan dan tugas kamu.">
               <Field label="Deskripsi" htmlFor="deskripsi" required>
                 <textarea
                   id="deskripsi"
@@ -256,6 +262,18 @@ async function Content({
                   defaultValue={activity.deskripsi}
                   className={areaCls}
                   placeholder="Ceritakan singkat tentang kegiatan ini"
+                />
+              </Field>
+              <Field label="Jobdesc" htmlFor="jobdesc" required hint="Tulis satu tugas per baris. Tekan Enter untuk poin baru.">
+                <textarea
+                  id="jobdesc"
+                  name="jobdesc"
+                  rows={4}
+                  required
+                  autoComplete="off"
+                  defaultValue={toLines(activity.jobdesc)}
+                  className={areaCls}
+                  placeholder={"Membuat dan mengontrol spreadsheet\nMenyusun skema data pemasukan dan pengeluaran"}
                 />
               </Field>
             </Section>
