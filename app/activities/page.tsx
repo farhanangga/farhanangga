@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Kegiatan | Portofolio Website",
+  title: "Activities | Portofolio Website",
   description: "Kepanitiaan dan kegiatan organisasi yang pernah diikuti Farhan Angga Riyanto.",
 };
 

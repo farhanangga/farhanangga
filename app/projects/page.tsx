@@ -11,7 +11,7 @@ import { MotionProvider, ScrollProgress } from "../../components/ui";
 import type { ProjectCategory, ProjectItem, ProjectTab } from "../../lib/data";
 
 export const metadata: Metadata = {
-  title: "Proyek | Portofolio Website",
+  title: "Projects | Portofolio Website",
   description:
     "Kumpulan proyek Software Engineer, UI/UX, dan Photography oleh Farhan Angga Riyanto.",
 };

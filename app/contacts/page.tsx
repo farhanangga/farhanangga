@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Kontak | Portofolio Website",
+  title: "Contacts | Portofolio Website",
   description: "Hubungi Farhan Angga Riyanto untuk proyek, kolaborasi, atau sekadar menyapa.",
 };
 

@@ -12,12 +12,15 @@ import { mono } from "@/components/fonts";
 import { CountUp, EASE, Heading, Tilt } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
-/* DATA: isi bagian ini dari database (tabel landing_about).           */
-/*  - /api/landingPage/about : lokasi, email, deskripsi, kampus, IPK…  */
-/*  - /api/projects          : jumlah "Proyek dikerjakan"              */
+/* DATA: filled from the database (table landing_about).              */
+/*  - /api/landingPage/about : location, email, bio, campus, GPA…     */
+/*  - /api/projects          : count for "Projects completed"         */
+/*  - /api/activities        : count for "Activities done"            */
+/*  All endpoints must allow GET without login (public page).         */
 /* ------------------------------------------------------------------ */
 const ABOUT_API = "/api/landingPage/about";
 const PROJECTS_API = "/api/projects";
+const ACTIVITIES_API = "/api/activities"; // adjust to your activities endpoint
 
 type AboutData = {
   lokasi: string;
@@ -34,12 +37,12 @@ type AboutData = {
 
 type Status = "loading" | "ready" | "empty" | "error";
 
-/* ───────────── EDIT: status ketersediaan (statis) ───────────── */
+/* ───────────── EDIT: availability status (static) ───────────── */
 const AVAILABLE = false;
-const AVAILABLE_TEXT = "Terbuka untuk freelance & kolaborasi";
+const AVAILABLE_TEXT = "Open to freelance & collaboration";
 /* ──────────────────────────────────────────────────────────── */
 
-/** Warna cadangan bila peran dari database tidak ada di daftar roles. */
+/** Fallback colors when a role from the database isn't in the roles list. */
 const FALLBACK_CHIPS = [
   { color: "#6366F1", text: "#fff" },
   { color: "#F25C5C", text: "#000" },
@@ -52,9 +55,9 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 type Part = { t: string; hot: boolean };
 
 /**
- * Pecah deskripsi jadi kata-kata untuk dianimasikan.
- * Frasa di `phrases` (mis. "Tailwind CSS", "REST API") ditandai hot, termasuk bila
- * melewati beberapa kata; tanda baca di belakangnya (",", ".") tetap tidak berwarna.
+ * Split the description into words for animation.
+ * Phrases in `phrases` (e.g. "Tailwind CSS", "REST API") are marked hot, even when
+ * they span several words; trailing punctuation ("," ".") stays uncolored.
  */
 function buildWords(text: string, phrases: string[]): Part[][] {
   const list = phrases.map((p) => p.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
@@ -87,28 +90,37 @@ function buildWords(text: string, phrases: string[]): Part[][] {
   return words;
 }
 
-/** Jumlah proyek dari respons api/projects: data = daftar kategori, tiap kategori punya array `projects`. */
+/**
+ * Count items in an API response.
+ * Supports: plain array, { data: [...] }, { total }, { count }, { projects | activities | items: [...] },
+ * and { data: [category, ...] } where each category has a `projects` or `activities` array.
+ */
 function countOf(json: unknown): number | null {
   if (Array.isArray(json)) return json.length;
   if (json && typeof json === "object") {
     const o = json as Record<string, unknown>;
-    if (
-      Array.isArray(o.data) &&
-      o.data.length > 0 &&
-      o.data.every((g) => g && typeof g === "object" && Array.isArray((g as Record<string, unknown>).projects))
-    ) {
-      return (o.data as { projects: unknown[] }[]).reduce((n, g) => n + g.projects.length, 0);
+
+    if (Array.isArray(o.data) && o.data.length > 0) {
+      for (const key of ["projects", "activities"]) {
+        const grouped = o.data.every(
+          (g) => g && typeof g === "object" && Array.isArray((g as Record<string, unknown>)[key]),
+        );
+        if (grouped) {
+          return (o.data as Record<string, unknown[]>[]).reduce((n, g) => n + g[key].length, 0);
+        }
+      }
     }
+
     if (typeof o.total === "number") return o.total;
     if (typeof o.count === "number") return o.count;
-    for (const k of ["data", "projects", "items"]) {
+    for (const k of ["data", "projects", "activities", "items"]) {
       if (Array.isArray(o[k])) return (o[k] as unknown[]).length;
     }
   }
   return null;
 }
 
-/** Kartu dengan cahaya yang mengikuti kursor */
+/** Card with a light that follows the cursor */
 function Spotlight({
   children,
   className = "",
@@ -163,11 +175,11 @@ function Reveal({
   );
 }
 
-/** Kerangka section (blob latar + wadah) dipakai semua status. */
+/** Section shell (background blobs + container), used by every status. */
 function Shell({ children }: { children: ReactNode }) {
   return (
     <section className="relative overflow-hidden">
-      {/* blob gradient latar */}
+      {/* background gradient blobs */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -left-40 top-20 h-[420px] w-[420px] rounded-full bg-[#6366F1]/20 blur-[120px]"
@@ -186,13 +198,13 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Placeholder selama data dimuat. */
+/** Placeholder while data is loading. */
 function AboutSkeleton() {
   const bar = "animate-pulse rounded-lg bg-white/10 motion-reduce:animate-none";
   return (
-    <div role="status" aria-busy="true" aria-label="Memuat tentang saya" className="grid gap-14 lg:grid-cols-[1.2fr_1fr]">
+    <div role="status" aria-busy="true" aria-label="Loading about me" className="grid gap-14 lg:grid-cols-[1.2fr_1fr]">
       <div>
-        <Heading>Tentang saya</Heading>
+        <Heading>About me</Heading>
         <div className="mt-6 flex gap-2">
           <div className={`${bar} h-8 w-40 rounded-full`} />
           <div className={`${bar} h-8 w-56 rounded-full`} />
@@ -213,6 +225,7 @@ function AboutSkeleton() {
         <div className={`${bar} h-24 rounded-xl sm:col-span-2 lg:col-span-1`} />
         <div className={`${bar} h-24 rounded-xl`} />
         <div className={`${bar} h-24 rounded-xl`} />
+        <div className={`${bar} h-24 rounded-xl sm:col-span-2 lg:col-span-1`} />
       </div>
     </div>
   );
@@ -220,25 +233,38 @@ function AboutSkeleton() {
 
 export function About() {
   const [status, setStatus] = useState<Status>("loading");
+  const [errMsg, setErrMsg] = useState("");
   const [about, setAbout] = useState<AboutData | null>(null);
   const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [activityCount, setActivityCount] = useState<number | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    const get = (url: string) =>
-      fetch(url, { signal: ctrl.signal, cache: "no-store" }).then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(`status ${res.status}`)),
-      );
+
+    const get = async (url: string) => {
+      const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+      if (!res.ok) throw new Error(`${url} → status ${res.status}`);
+      return res.json();
+    };
 
     (async () => {
-      const [aboutRes, projectsRes] = await Promise.allSettled([get(ABOUT_API), get(PROJECTS_API)]);
+      const [aboutRes, projectsRes, activitiesRes] = await Promise.allSettled([
+        get(ABOUT_API),
+        get(PROJECTS_API),
+        get(ACTIVITIES_API),
+      ]);
       if (ctrl.signal.aborted) return;
 
       if (aboutRes.status === "rejected") {
-        console.error("[about] gagal memuat data:", aboutRes.reason);
+        const msg = String((aboutRes.reason as Error | undefined)?.message ?? "");
+        console.error("[about] failed to load data:", aboutRes.reason);
+        setErrMsg(
+          /status 40[13]/.test(msg) ? "The about section can't be accessed." : "The about section failed to load.",
+        );
         setStatus("error");
         return;
       }
+
       const d = (aboutRes.value as { data?: AboutData | null }).data;
       if (!d) {
         setStatus("empty");
@@ -246,8 +272,9 @@ export function About() {
       }
 
       setAbout(d);
-      // jumlah proyek gagal dimuat → tampil "—", bagian lain tetap muncul
+      // if projects / activities fail to load → show "—", the rest still renders
       setProjectCount(projectsRes.status === "fulfilled" ? countOf(projectsRes.value) : null);
+      setActivityCount(activitiesRes.status === "fulfilled" ? countOf(activitiesRes.value) : null);
       setStatus("ready");
     })();
 
@@ -267,15 +294,15 @@ export function About() {
   if (status !== "ready" || !about) {
     return (
       <Shell>
-        <Heading>Tentang saya</Heading>
+        <Heading>About me</Heading>
         <p role="status" className="mt-6 text-white/70">
-          {status === "error" ? "Data tentang saya gagal dimuat." : "Data tentang saya belum diisi."}
+          {status === "error" ? errMsg : "The about section hasn't been filled in yet."}
         </p>
       </Shell>
     );
   }
 
-  /* peran dari database; href & warna diambil dari daftar roles bila labelnya cocok */
+  /* roles come from the database; href & colors are taken from the roles list when the label matches */
   const known = new Map(roles.map((r) => [r.label.toLowerCase(), r]));
   const chips = about.peran.map((label, i) => {
     const r = known.get(label.toLowerCase());
@@ -285,7 +312,7 @@ export function About() {
 
   const stats = [
     {
-      label: "Lulusan dari",
+      label: "Graduated from",
       content: (
         <>
           <span className={`${mono.className} block text-xl font-semibold`}>{about.kampus}</span>
@@ -296,7 +323,7 @@ export function About() {
       ),
     },
     {
-      label: "IPK",
+      label: "GPA",
       content: (
         <span className={`${mono.className} text-5xl font-bold text-[#FFC857]`}>
           <CountUp to={about.ipk} decimals={2} />
@@ -304,10 +331,18 @@ export function About() {
       ),
     },
     {
-      label: "Proyek dikerjakan",
+      label: "Projects completed",
       content: (
         <span className={`${mono.className} text-5xl font-bold text-[#FFC857]`}>
           {projectCount === null ? "—" : <CountUp to={projectCount} suffix="+" />}
+        </span>
+      ),
+    },
+    {
+      label: "Activities done",
+      content: (
+        <span className={`${mono.className} text-5xl font-bold text-[#FFC857]`}>
+          {activityCount === null ? "—" : <CountUp to={activityCount} suffix="+" />}
         </span>
       ),
     },
@@ -315,12 +350,12 @@ export function About() {
 
   return (
     <Shell>
-      {/* ───── Bagian 1: intro + statistik ───── */}
+      {/* ───── Part 1: intro + stats ───── */}
       <div className="grid gap-14 lg:grid-cols-[1.2fr_1fr]">
         <div>
-          <Heading>Tentang saya</Heading>
+          <Heading>About me</Heading>
 
-          {/* status + info cepat */}
+          {/* status + quick info */}
           <Reveal className="mt-6 flex flex-wrap gap-2 text-sm">
             {AVAILABLE && (
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-emerald-300">
@@ -366,7 +401,7 @@ export function About() {
             ))}
           </p>
 
-          {/* peran */}
+          {/* roles */}
           <Reveal delay={0.1} className="mt-8 flex flex-wrap gap-3">
             {chips.map((r) => (
               <motion.a
@@ -387,7 +422,8 @@ export function About() {
           {stats.map((s, i) => (
             <motion.div
               key={s.label}
-              className={i === 0 ? "sm:col-span-2 lg:col-span-1" : ""}
+              /* first & last cards span the full width on sm screens, so no card is left orphaned */
+              className={i === 0 || i === stats.length - 1 ? "sm:col-span-2 lg:col-span-1" : ""}
               initial={{ opacity: 0, rotateX: -35, y: 40 }}
               whileInView={{ opacity: 1, rotateX: 0, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
