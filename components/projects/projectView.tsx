@@ -9,7 +9,7 @@ import { mono } from "../fonts";
 import { ProjectModal, Shot, pad, themeOf, type Theme } from "./projectModal";
 import { EASE, Tilt } from "../ui";
 
-/* ───────────── Warna & jenis bidang ───────────── */
+/* ───────────── Colors & field kinds ───────────── */
 
 type Kind = "software" | "uiux" | "photo" | "graphic";
 
@@ -20,7 +20,10 @@ const PALETTE: Record<Kind, { hex: string; rgb: string; ink: string }> = {
   graphic: { hex: "#34D399", rgb: "52,211,153", ink: "#000000" },
 };
 
-/** Tentukan jenis bidang dari teks (id / label / short / param URL). */
+/**
+ * Determine the field kind from text (id / label / short / URL param).
+ * "grafis" and "foto" are kept so labels stored in Indonesian in the database still match.
+ */
 function kindFromText(text: string): Kind | null {
   const key = text.toLowerCase();
   if (/graphic|grafis/.test(key)) return "graphic";
@@ -34,7 +37,7 @@ function kindOf(t: ProjectTab): Kind | null {
   return kindFromText(`${t.id} ${t.label} ${t.short ?? ""}`);
 }
 
-/** Ikon & field lain tetap dari themeOf; hanya warna yang ditimpa. */
+/** Icon & other fields still come from themeOf; only the colors are overridden. */
 function themeForTab(t: ProjectTab | null): Theme {
   if (!t) return themeOf(null);
   const base = themeOf(t.id);
@@ -42,7 +45,7 @@ function themeForTab(t: ProjectTab | null): Theme {
   return kind ? { ...base, ...PALETTE[kind] } : base;
 }
 
-/* ───────────── Konfigurasi ───────────── */
+/* ───────────── Configuration ───────────── */
 
 function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null {
   if (!param) return null;
@@ -56,32 +59,32 @@ function resolveTab(param: string | null, tabs: ProjectTab[]): ProjectTab | null
 const COPY: Record<string, { title: string; text: string }> = {
   all: {
     title: "My Projects",
-    text: "Kumpulan karya saya dari empat bidang: membangun aplikasi, merancang UI/UX, fotografi, dan desain grafis.",
+    text: "A collection of my work from four areas: building applications, designing UI/UX, photography, and graphic design.",
   },
   software: {
     title: "Software Engineer",
-    text: "Aplikasi dan website yang saya bangun, dari antarmuka sampai logika di baliknya.",
+    text: "The applications and websites I've built, from the interface to the underlying logic.",
   },
   uiux: {
     title: "UI/UX Designer",
-    text: "Rancangan antarmuka dan alur pengguna, dari wireframe sampai prototipe.",
+    text: "Interface and user flow design, from wireframe to prototype.",
   },
   photo: {
     title: "Photographer",
-    text: "Karya fotografi yang saya ambil dan olah sendiri.",
+    text: "Photography work that I took and edited myself.",
   },
   graphic: {
     title: "Graphic Designer",
-    text: "Desain visual seperti poster, logo, dan identitas merek yang saya buat.",
+    text: "Visual designs such as posters, logos, and brand identities that I created.",
   },
 };
 
 type Entry = { p: ProjectItem; tab: ProjectTab; key: string };
 type Option = { id: string | null; label: string; short: string; count: number; theme: Theme };
 
-/* ───────────── Pencarian ───────────── */
+/* ───────────── Search ───────────── */
 
-/** Huruf kecil tanpa aksen, supaya "Fotografi" cocok dengan "fotografi". */
+/** Lowercase without accents, so "Fotografi" matches "fotografi". */
 function normalize(s: string): string {
   return s
     .toLowerCase()
@@ -89,7 +92,7 @@ function normalize(s: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Pecah kata kunci; proyek cocok jika SEMUA kata ada di salah satu field-nya. */
+/** Split the query into terms; a project matches if ALL terms appear in any of its fields. */
 function toTerms(query: string): string[] {
   return normalize(query).split(/\s+/).filter(Boolean);
 }
@@ -106,7 +109,7 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Beri sorotan pada kata yang cocok dengan pencarian. */
+/** Highlight the words that match the search. */
 function Highlight({ text, terms, rgb }: { text: string; terms: string[]; rgb: string }) {
   if (terms.length === 0 || !text) return <>{text}</>;
   const sorted = [...terms].sort((a, b) => b.length - a.length);
@@ -155,11 +158,11 @@ function ProjectCard({
   const { p, tab } = entry;
   const th = themeForTab(tab);
   const isPhoto = kindOf(tab) === "photo";
-  // tab Photographer sedang aktif (showRole = false berarti sedang difilter ke satu bidang)
+  // Photographer tab is active (showRole = false means it's filtered to a single field)
   const photoTab = isPhoto && !showRole;
   const extraTools = p.tools.length - 3;
 
-  // satu-satunya varian yang bergantung pada tema
+  // the only variant that depends on the theme
   const arrowV: Variants = {
     rest: { backgroundColor: "rgba(255,255,255,0.08)", color: "#FFFFFF", scale: 1 },
     hover: {
@@ -196,8 +199,8 @@ function ProjectCard({
             onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
             className="flex h-full w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
-            {/* sampul: di tab Photographer selalu 4/5 (seperti mobile) di semua ukuran layar;
-                di tab lain / "Semua", foto hanya setinggi itu di mobile */}
+            {/* cover: on the Photographer tab it's always 4/5 (like mobile) at every screen size;
+                on other tabs / "All", photos only get that height on mobile */}
             <span
               className={`relative block w-full overflow-hidden bg-[#0B0B24] ${
                 photoTab
@@ -210,7 +213,7 @@ function ProjectCard({
               <motion.span variants={imgV} className="absolute inset-0 block">
                 <Shot
                   src={p.images[0] ?? ""}
-                  alt={`Sampul proyek ${p.title}`}
+                  alt={`Cover of ${p.title}`}
                   sizes="(min-width:1024px) 380px, (min-width:640px) 50vw, 100vw"
                   theme={th}
                 />
@@ -238,7 +241,7 @@ function ProjectCard({
               )}
             </span>
 
-            {/* isi */}
+            {/* content */}
             <span className="flex flex-1 flex-col p-5">
               <span className={`${mono.className} text-sm`} style={{ color: th.hex }}>
                 <Highlight text={p.type} terms={terms} rgb={th.rgb} />
@@ -264,7 +267,7 @@ function ProjectCard({
               </span>
 
               <span className="mt-auto flex items-center justify-between border-t border-white/10 pt-4 text-sm">
-                <span className="text-white/60">Lihat detail</span>
+                <span className="text-white/60">View details</span>
                 <motion.span variants={arrowV} className="grid h-9 w-9 place-items-center rounded-full">
                   <ArrowUpRight size={17} />
                 </motion.span>
@@ -277,9 +280,9 @@ function ProjectCard({
   );
 }
 
-/* ───────────── Halaman ───────────── */
+/* ───────────── Page ───────────── */
 
-/** Data tab dikirim dari server component (app/projects/page.tsx). Filter bidang lewat ?role=... */
+/** Tab data is passed from a server component (app/projects/page.tsx). Field filter via ?role=... */
 export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -292,7 +295,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const active = resolveTab(params.get("role"), tabs);
   const activeId = active?.id ?? null;
   const theme = themeForTab(active);
-  // warna teks/isi panel pencarian mengikuti kontras warna bidang (putih atau hitam)
+  // search panel text/fill follows the field color's contrast (white or black)
   const darkInk = theme.ink.toLowerCase() === "#000000" || theme.ink.toLowerCase() === "#000";
   const inkRgb = darkInk ? "0,0,0" : "255,255,255";
   const fieldBg = darkInk ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.22)";
@@ -304,7 +307,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const rawTerms = useMemo(() => query.trim().split(/\s+/).filter(Boolean), [query]);
   const searching = terms.length > 0;
 
-  // tools yang paling sering dipakai, jadi saran pencarian cepat
+  // most-used tools, shown as quick search suggestions
   const popularTools = useMemo(() => {
     const freq = new Map<string, { label: string; n: number }>();
     for (const t of tabs)
@@ -321,7 +324,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
       .map((x) => x.label);
   }, [tabs]);
 
-  // hasil pencarian per bidang (dipakai untuk angka di tab)
+  // search results per field (used for the counts on the tabs)
   const matchesByTab = useMemo(
     () =>
       tabs.map((t) => ({
@@ -344,8 +347,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   const options: Option[] = [
     {
       id: null,
-      label: "Semua",
-      short: "Semua",
+      label: "All",
+      short: "All",
       count: matchesByTab.reduce((sum, m) => sum + m.projects.length, 0),
       theme: themeForTab(null),
     },
@@ -358,14 +361,14 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
     })),
   ];
 
-  // Di mobile, tab aktif digulung ke tengah barisan tab.
-  // Hanya container tab yang digulung (bukan scrollIntoView), supaya section/halaman tidak ikut bergeser.
+  // On mobile, scroll the active tab to the center of the tab row.
+  // Only the tab container is scrolled (not scrollIntoView), so the section/page doesn't shift.
   useEffect(() => {
     const list = tabListRef.current;
     const el = list?.querySelector<HTMLElement>('[aria-selected="true"]');
     if (!list || !el) return;
 
-    // di desktop barisan tab tidak meluap, jadi tidak perlu digulung
+    // on desktop the tab row doesn't overflow, so there's nothing to scroll
     if (list.scrollWidth <= list.clientWidth) return;
 
     const listRect = list.getBoundingClientRect();
@@ -376,7 +379,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
     list.scrollTo({ left, behavior: "smooth" });
   }, [activeId]);
 
-  // pintasan: tekan "/" untuk langsung mengetik di kolom cari
+  // shortcut: press "/" to jump straight into the search field
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -407,7 +410,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
   return (
     <MotionConfig reducedMotion="user">
       <section className="relative overflow-hidden">
-        {/* dot grid + blob cahaya mengikuti warna bidang */}
+        {/* dot grid + glow blobs that follow the field color */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -440,15 +443,15 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
         />
 
         <div className="relative mx-auto max-w-[1200px] px-5 pb-24 pt-32 sm:px-10 sm:pb-28 sm:pt-40">
-          {/* judul */}
+          {/* title */}
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
             className={`${mono.className} text-sm text-white/50`}
           >
-            Portofolio <span className="text-white/25">/</span>{" "}
-            <span style={{ color: theme.hex }}>Proyek</span>
+            Portfolio <span className="text-white/25">/</span>{" "}
+            <span style={{ color: theme.hex }}>Projects</span>
           </motion.p>
 
           <div className="relative mt-3 min-h-[8.5rem] sm:min-h-[11rem]">
@@ -475,7 +478,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
               </motion.div>
             </AnimatePresence>
 
-            {/* angka outline raksasa */}
+            {/* giant outline number */}
             <span
               aria-hidden
               className={`${mono.className} pointer-events-none absolute right-0 top-0 hidden select-none text-[9rem] font-black leading-none md:block`}
@@ -485,7 +488,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
             </span>
           </div>
 
-          {/* pencarian + saran tools: panel solid, warnanya mengikuti bidang aktif */}
+          {/* search + tool suggestions: solid panel, color follows the active field */}
           <motion.div
             className="mt-8 rounded-[2rem] p-3 sm:p-4"
             initial={false}
@@ -521,8 +524,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                     changeQuery("");
                   }
                 }}
-                placeholder="Cari proyek: judul, tools, atau jenis"
-                aria-label="Cari proyek"
+                placeholder="Search projects: title, tools, or type"
+                aria-label="Search projects"
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-[color:var(--ph)] [&::-webkit-search-cancel-button]:hidden"
@@ -543,7 +546,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                       className={`${mono.className} rounded-full px-3 py-1 text-xs font-semibold`}
                       style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
-                      {entries.length} hasil
+                      {entries.length} {entries.length === 1 ? "result" : "results"}
                     </span>
                     <button
                       type="button"
@@ -551,7 +554,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                         e.stopPropagation();
                         clearQuery();
                       }}
-                      aria-label="Hapus pencarian"
+                      aria-label="Clear search"
                       className="grid h-9 w-9 place-items-center rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white/60"
                       style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
@@ -575,7 +578,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
               </AnimatePresence>
             </motion.div>
 
-            {/* saran cepat: tools yang paling sering dipakai */}
+            {/* quick suggestions: most-used tools */}
             <AnimatePresence initial={false}>
               {!searching && popularTools.length > 0 && (
                 <motion.div
@@ -588,7 +591,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                 >
                   <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 pt-3 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
                     <span className="shrink-0 text-xs font-semibold" style={{ color: theme.ink }}>
-                      Coba cari
+                      Try searching
                     </span>
                     {popularTools.map((t) => (
                       <button
@@ -610,16 +613,16 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
             </AnimatePresence>
           </motion.div>
 
-          {/* filter bidang */}
+          {/* field filter */}
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* mobile: bisa digeser ke samping; sm ke atas: tampil biasa */}
+            {/* mobile: scrollable sideways; sm and up: displayed normally */}
             <div
               ref={tabListRef}
               className="-mx-5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
             >
               <div
                 role="tablist"
-                aria-label="Filter bidang proyek"
+                aria-label="Filter projects by field"
                 className="inline-flex w-max snap-x snap-mandatory gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1"
               >
                 {options.map((o) => {
@@ -657,11 +660,11 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
               <span className={mono.className} style={{ color: theme.hex }}>
                 {pad(entries.length)}
               </span>{" "}
-              proyek ditampilkan
+              {entries.length === 1 ? "project" : "projects"} shown
             </p>
           </div>
 
-          {/* grid card */}
+          {/* card grid */}
           {entries.length > 0 ? (
             <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <AnimatePresence mode="popLayout">
@@ -682,8 +685,8 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
               {searching ? (
                 <>
                   <p>
-                    Tidak ada proyek yang cocok dengan “<span className="text-white/80">{query.trim()}</span>”
-                    {active ? ` di bidang ${active.short}` : ""}.
+                    No projects match “<span className="text-white/80">{query.trim()}</span>”
+                    {active ? ` in ${active.short}` : ""}.
                   </p>
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                     <button
@@ -691,7 +694,7 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                       onClick={clearQuery}
                       className="rounded-full bg-white/10 px-4 py-2 text-sm text-white outline-none transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/60"
                     >
-                      Hapus pencarian
+                      Clear search
                     </button>
                     {active && (
                       <button
@@ -700,19 +703,19 @@ export function ProjectsView({ tabs = [] }: { tabs?: ProjectTab[] }) {
                         className="rounded-full px-4 py-2 text-sm font-medium outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-white/60"
                         style={{ background: theme.hex, color: theme.ink }}
                       >
-                        Cari di semua bidang
+                        Search all fields
                       </button>
                     )}
                   </div>
                 </>
               ) : (
-                "Belum ada proyek di bidang ini."
+                "No projects in this field yet."
               )}
             </div>
           )}
         </div>
 
-        {/* detail (modal yang sama dengan section proyek di beranda) */}
+        {/* detail (same modal as the projects section on the home page) */}
         <AnimatePresence>
           {sel && entries[sel.index] && (
             <ProjectModal

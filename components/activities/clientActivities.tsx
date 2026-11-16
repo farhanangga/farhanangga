@@ -8,9 +8,9 @@ import { mono } from "../fonts";
 import { EASE, Tilt } from "../ui";
 import { ACTIVITY_THEME, ActivityModal, Shot, pad } from "./activitiesModal";
 
-/* ───────────── Pencarian ───────────── */
+/* ───────────── Search ───────────── */
 
-/** Huruf kecil tanpa aksen, supaya pencarian tidak sensitif huruf besar/aksen. */
+/** Lowercase without accents, so search is case- and accent-insensitive. */
 function normalize(s: string): string {
   return s
     .toLowerCase()
@@ -18,7 +18,7 @@ function normalize(s: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-/** Pecah kata kunci; kegiatan cocok jika SEMUA kata ada di salah satu field-nya. */
+/** Split the query into terms; an activity matches if ALL terms appear in any of its fields. */
 function toTerms(query: string): string[] {
   return normalize(query).split(/\s+/).filter(Boolean);
 }
@@ -26,7 +26,7 @@ function toTerms(query: string): string[] {
 function matchesActivity(a: ActivityItem, terms: string[]): boolean {
   if (terms.length === 0) return true;
   const haystack = normalize(
-    [a.namaKegiatan, a.role, a.deskripsi, a.tahun != null ? String(a.tahun) : "kepanitiaan"].join(" ")
+    [a.namaKegiatan, a.role, a.deskripsi, a.tahun != null ? String(a.tahun) : "committee"].join(" ")
   );
   return terms.every((t) => haystack.includes(t));
 }
@@ -35,7 +35,7 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Beri sorotan pada kata yang cocok dengan pencarian. */
+/** Highlight the words that match the search. */
 function Highlight({ text, terms, rgb }: { text: string; terms: string[]; rgb: string }) {
   if (terms.length === 0 || !text) return <>{text}</>;
   const sorted = [...terms].sort((a, b) => b.length - a.length);
@@ -116,12 +116,12 @@ function ActivityCard({
             onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
             className="flex h-full w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
-            {/* sampul */}
+            {/* cover */}
             <span className="relative block aspect-[16/10] w-full overflow-hidden bg-[#0B0B24]">
               <motion.span variants={imgV} className="absolute inset-0 block">
                 <Shot
                   src={a.images[0] ?? ""}
-                  alt={`Sampul kegiatan ${a.namaKegiatan}`}
+                  alt={`Cover of ${a.namaKegiatan}`}
                   sizes="(min-width:1024px) 380px, (min-width:640px) 50vw, 100vw"
                   theme={th}
                 />
@@ -140,10 +140,10 @@ function ActivityCard({
               </span>
             </span>
 
-            {/* isi */}
+            {/* content */}
             <span className="flex flex-1 flex-col p-5">
               <span className={`${mono.className} text-sm`} style={{ color: th.hex }}>
-                <Highlight text={a.tahun != null ? String(a.tahun) : "Kepanitiaan"} terms={terms} rgb={th.rgb} />
+                <Highlight text={a.tahun != null ? String(a.tahun) : "Committee"} terms={terms} rgb={th.rgb} />
               </span>
               <span className="mt-1 text-xl font-semibold leading-snug">
                 <Highlight text={a.namaKegiatan} terms={terms} rgb={th.rgb} />
@@ -159,7 +159,7 @@ function ActivityCard({
               </span>
 
               <span className="mt-auto flex items-center justify-between border-t border-white/10 pt-4 text-sm">
-                <span className="text-white/60">Lihat detail</span>
+                <span className="text-white/60">View details</span>
                 <motion.span variants={arrowV} className="grid h-9 w-9 place-items-center rounded-full">
                   <ArrowUpRight size={17} />
                 </motion.span>
@@ -172,9 +172,9 @@ function ActivityCard({
   );
 }
 
-/* ───────────── Halaman ───────────── */
+/* ───────────── Page ───────────── */
 
-/** Data datang dari API (/api/activities) lewat app/activities/page.tsx */
+/** Data comes from the API (/api/activities) via app/activities/page.tsx */
 export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
   const theme = ACTIVITY_THEME;
   const [year, setYear] = useState<number | null>(null);
@@ -184,7 +184,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const close = useCallback(() => setSel(null), []);
 
-  // warna teks/isi panel pencarian mengikuti kontras warna tema (putih atau hitam)
+  // search panel text/fill follows the theme's contrast color (white or black)
   const darkInk = theme.ink.toLowerCase() === "#000000" || theme.ink.toLowerCase() === "#000";
   const inkRgb = darkInk ? "0,0,0" : "255,255,255";
   const fieldBg = darkInk ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.22)";
@@ -193,13 +193,13 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
   const rawTerms = useMemo(() => query.trim().split(/\s+/).filter(Boolean), [query]);
   const searching = terms.length > 0;
 
-  // daftar tahun yang ada di data, terbaru dulu
+  // years present in the data, newest first
   const years = useMemo(
     () => [...new Set(items.map((a) => a.tahun).filter((y): y is number => typeof y === "number"))].sort((a, b) => b - a),
     [items]
   );
 
-  // peran yang paling sering muncul, jadi saran pencarian cepat
+  // most frequent roles, used as quick search suggestions
   const popularRoles = useMemo(() => {
     const freq = new Map<string, { label: string; n: number }>();
     for (const a of items) {
@@ -216,12 +216,12 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
       .map((x) => x.label);
   }, [items]);
 
-  // hasil pencarian (dipakai untuk angka di filter tahun)
+  // search results (also used for the counts in the year filter)
   const matched = useMemo(() => items.filter((a) => matchesActivity(a, terms)), [items, terms]);
   const entries = useMemo(() => (year ? matched.filter((a) => a.tahun === year) : matched), [matched, year]);
 
   const options = [
-    { id: null as number | null, label: "Semua", count: matched.length },
+    { id: null as number | null, label: "All", count: matched.length },
     ...years.map((y) => ({
       id: y as number | null,
       label: String(y),
@@ -229,7 +229,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
     })),
   ];
 
-  // pintasan: tekan "/" untuk langsung mengetik di kolom cari
+  // shortcut: press "/" to jump straight into the search field
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -260,7 +260,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
   return (
     <MotionConfig reducedMotion="user">
       <section className="relative overflow-hidden">
-        {/* dot grid + blob cahaya */}
+        {/* dot grid + glow blobs */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -287,15 +287,15 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
         />
 
         <div className="relative mx-auto max-w-[1200px] px-5 pb-20 pt-28 sm:px-10 sm:pb-28 sm:pt-40">
-          {/* judul */}
+          {/* title */}
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
             className={`${mono.className} text-sm text-white/50`}
           >
-            Portofolio <span className="text-white/25">/</span>{" "}
-            <span style={{ color: theme.hex }}>Kegiatan</span>
+            Portfolio <span className="text-white/25">/</span>{" "}
+            <span style={{ color: theme.hex }}>Activities</span>
           </motion.p>
 
           <div className="relative">
@@ -317,11 +317,10 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
               transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
               className="mt-4 max-w-[52ch] leading-relaxed text-white/70"
             >
-              Kegiatan organisasi dan kepanitiaan yang pernah saya ikuti, dari operator acara sampai
-              kepala divisi.
+              I've been involved in various organizational and committee activities, from event operator to division head.
             </motion.p>
 
-            {/* angka outline raksasa */}
+            {/* giant outline number */}
             <span
               aria-hidden
               className={`${mono.className} pointer-events-none absolute right-0 top-0 hidden select-none text-[9rem] font-black leading-none md:block`}
@@ -331,7 +330,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
             </span>
           </div>
 
-          {/* pencarian + saran peran: panel solid sesuai warna tema */}
+          {/* search + role suggestions: solid panel in the theme color */}
           <div
             className="mt-8 rounded-[2rem] p-3 sm:p-4"
             style={{ background: theme.hex, color: theme.ink }}
@@ -362,8 +361,8 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                     changeQuery("");
                   }
                 }}
-                placeholder="Cari kegiatan: nama, peran, atau tahun"
-                aria-label="Cari kegiatan"
+                placeholder="Search activities: name, role, or year"
+                aria-label="Search activities"
                 autoComplete="off"
                 spellCheck={false}
                 className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-[color:var(--ph)] [&::-webkit-search-cancel-button]:hidden"
@@ -384,7 +383,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                       className={`${mono.className} rounded-full px-3 py-1 text-xs font-semibold`}
                       style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
-                      {entries.length} hasil
+                      {entries.length} {entries.length === 1 ? "result" : "results"}
                     </span>
                     <button
                       type="button"
@@ -392,7 +391,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                         e.stopPropagation();
                         clearQuery();
                       }}
-                      aria-label="Hapus pencarian"
+                      aria-label="Clear search"
                       className="grid h-9 w-9 place-items-center rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-white/60"
                       style={{ background: `rgba(${inkRgb},0.16)`, color: theme.ink }}
                     >
@@ -416,7 +415,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
               </AnimatePresence>
             </motion.div>
 
-            {/* saran cepat: peran yang paling sering muncul */}
+            {/* quick suggestions: most frequent roles */}
             <AnimatePresence initial={false}>
               {!searching && popularRoles.length > 0 && (
                 <motion.div
@@ -429,7 +428,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                 >
                   <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 pt-3 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
                     <span className="shrink-0 text-xs font-semibold" style={{ color: theme.ink }}>
-                      Coba cari
+                      Try searching
                     </span>
                     {popularRoles.map((r) => (
                       <button
@@ -451,11 +450,11 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
             </AnimatePresence>
           </div>
 
-          {/* filter tahun */}
+          {/* year filter */}
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div
               role="tablist"
-              aria-label="Filter tahun kegiatan"
+              aria-label="Filter activities by year"
               className="-mx-5 flex gap-1 overflow-x-auto px-5 pb-1 sm:mx-0 sm:px-0 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
@@ -492,11 +491,11 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
               <span className={mono.className} style={{ color: theme.hex }}>
                 {pad(entries.length)}
               </span>{" "}
-              kegiatan ditampilkan
+              {entries.length === 1 ? "activity" : "activities"} shown
             </p>
           </div>
 
-          {/* grid card */}
+          {/* card grid */}
           {entries.length > 0 ? (
             <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <AnimatePresence mode="popLayout">
@@ -516,8 +515,8 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
               {searching ? (
                 <>
                   <p>
-                    Tidak ada kegiatan yang cocok dengan “<span className="text-white/80">{query.trim()}</span>”
-                    {year ? ` di tahun ${year}` : ""}.
+                    No activities match “<span className="text-white/80">{query.trim()}</span>”
+                    {year ? ` in ${year}` : ""}.
                   </p>
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                     <button
@@ -525,7 +524,7 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                       onClick={clearQuery}
                       className="rounded-full bg-white/10 px-4 py-2 text-sm text-white outline-none transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/60"
                     >
-                      Hapus pencarian
+                      Clear search
                     </button>
                     {year && (
                       <button
@@ -534,13 +533,13 @@ export function ActivitiesClient({ items }: { items: ActivityItem[] }) {
                         className="rounded-full px-4 py-2 text-sm font-medium outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-white/60"
                         style={{ background: theme.hex, color: theme.ink }}
                       >
-                        Cari di semua tahun
+                        Search all years
                       </button>
                     )}
                   </div>
                 </>
               ) : (
-                "Belum ada kegiatan di tahun ini."
+                "No activities for this year yet."
               )}
             </div>
           )}
