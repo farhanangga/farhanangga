@@ -1,6 +1,6 @@
-no<div align="center">
+<div align="center">
 
-# 👋 Hi, I'm Farhan Angga Riyanto
+# 👋 Hello Guys, I'm Farhan Angga Riyanto
 
 ### Full-Stack Developer | Front-End & Back-End Developers | UI/UX Designer
 
