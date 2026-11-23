@@ -2,7 +2,7 @@
 
 # 👋 Hello Guys, I'm Farhan Angga Riyanto
 
-### Full-Stack Developer | UI/UX Designer
+### Fullstack Developer | UI/UX Designer
 
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=22&pause=1000&color=38BDF8&center=true&vCenter=true&width=750&lines=Full-Stack+Developer;Front-End+%7C+Back-End+%7C+UI%2FUX+Design;React.js+%7C+Next.js+%7C+TypeScript+%7C+NestJS+%7C+Laravel;From+Figma+Wireframes+to+Production+Code;Software+Engineering+Graduate+%40+UPI" alt="Typing SVG" />
 
